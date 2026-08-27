@@ -50,7 +50,7 @@ export default function Home() {
   const visibleProjects = useMemo(() => projectsQuery.data?.slice(0, 3).map((project, index) => ({ code: project.code, name: project.name, client: `Cliente #${project.clientId}`, status: project.status === "in_progress" ? "Em produção" : project.status === "post_sale" ? "Pós-venda" : "Planejamento", progress: project.status === "delivered" ? 100 : project.status === "in_progress" ? 68 : 38, value: money(Number(project.soldValue ?? 0)), margin: Number(project.soldValue ?? 0) ? `${(((Number(project.soldValue ?? 0) - Number(project.actualCost ?? 0)) / Number(project.soldValue ?? 0)) * 100).toFixed(1).replace(".", ",")}%` : "0%", tone: ["blue", "violet", "emerald"][index % 3] })) ?? demoProjects, [projectsQuery.data]);
 
   return <div className="min-h-screen bg-[#f5f7fb] text-[#172033]">
-    <aside className={`fixed inset-y-0 left-0 z-50 w-[264px] border-r border-[#e5e9f2] bg-[#101828] text-white transition-transform duration-200 lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
+    <aside className={`fixed inset-y-0 left-0 z-50 w-[264px] border-r border-white/5 bg-[#0f0f0f] text-white transition-transform duration-200 lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
       <div className="flex h-20 items-center justify-between border-b border-white/10 px-4">
         <img src="/logo.png" alt="Multiply Engineering" className="h-12 w-auto object-contain" style={{ mixBlendMode: "screen" }} />
         <button onClick={() => setMobileOpen(false)} className="lg:hidden"><X className="h-5 w-5 text-white/60" /></button>
