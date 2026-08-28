@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart3, Bell, Boxes, BriefcaseBusiness, CheckCircle2, ChevronRight, CircleDollarSign, ClipboardCheck, Clock3, Factory, FileText, LayoutDashboard, LogIn, Menu, Moon, PackageCheck, Plus, Search, Settings2, ShieldCheck, ShoppingCart, Sparkles, Sun, TrendingUp, Truck, UserRound, UsersRound, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
@@ -45,6 +46,7 @@ export default function Home() {
   const projectsQuery = trpc.projects.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const productionQuery = trpc.production.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const clientsQuery = trpc.clients.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
+  const isLoading = summaryQuery.isLoading || reportsQuery.isLoading || projectsQuery.isLoading;
   const summary = summaryQuery.data ?? { projects: 12, proposals: 8, orders: 16, clients: 34, stockAlerts: 3, overdueOrders: 2, budgetAlerts: 1, postSaleToday: 4 };
   const reports = reportsQuery.data ?? { sold: 18500, planned: 10200, actual: 9840, margin: 44.7, suppliersAtRisk: 1 };
   const currentModule = visibleModules.find(item => item.id === active) ?? visibleModules[0];
@@ -64,10 +66,14 @@ export default function Home() {
     <main className="min-h-screen lg:pl-[264px]">
       <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-[#e5e9f2] bg-[#f5f7fb]/90 px-5 backdrop-blur-xl sm:px-8"><div className="flex items-center gap-3"><button onClick={() => setMobileOpen(true)} className="rounded-lg border border-[#e5e9f2] bg-white p-2 lg:hidden"><Menu className="h-5 w-5" /></button><div><p className="text-xs font-medium text-[#8792a8]">Quarta-feira, 19 de agosto de 2026</p><h1 className="mt-0.5 text-xl font-semibold tracking-tight">{currentModule.label}</h1></div></div><div className="flex items-center gap-2 sm:gap-4"><div className="hidden items-center gap-2 rounded-xl border border-[#e5e9f2] bg-white px-3 py-2 text-sm text-[#9aa3b5] md:flex"><Search className="h-4 w-4" /> Pesquisar <span className="ml-6 rounded bg-[#f0f2f7] px-1.5 py-0.5 text-[10px]">⌘ K</span></div><button className="relative rounded-xl border border-[#e5e9f2] bg-white p-2.5 text-[#64708a] hover:text-zinc-800"><Bell className="h-[18px] w-[18px]" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-white" /></button>{!isAuthenticated && <Button onClick={() => window.location.href = "/login"} className="hidden gap-2 rounded-xl bg-zinc-800 hover:bg-zinc-900 px-4 shadow-lg shadow-zinc-200 sm:flex"><LogIn className="h-4 w-4" /> Entrar</Button>}</div></header>
       <div className="mx-auto max-w-[1440px] px-5 py-7 sm:px-8 sm:py-9"><div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="mb-2 flex items-center gap-2 text-sm font-medium text-zinc-700"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Operação saudável</p><h2 className="text-3xl font-semibold tracking-[-0.04em] sm:text-[34px]">Bom dia, {greeting}.</h2><p className="mt-2 max-w-2xl text-sm text-[#7b879c]">Aqui está o panorama do seu negócio. Existem <strong className="font-semibold text-[#172033]">6 pontos</strong> que merecem atenção hoje.</p></div><Button onClick={() => setActive("commercial")} className="w-fit gap-2 rounded-xl bg-[#172033] px-4 shadow-xl shadow-slate-300/30"><Plus className="h-4 w-4" /> Nova proposta</Button></div>
-        {active === "dashboard" ? <DashboardContent summary={summary} reports={reports} projects={visibleProjects} setActive={setActive} /> : <ModulePlaceholder active={active} onBack={() => setActive("dashboard")} />}
+        {isLoading && active === "dashboard" ? <DashboardSkeleton /> : active === "dashboard" ? <DashboardContent summary={summary} reports={reports} projects={visibleProjects} setActive={setActive} /> : <ModulePlaceholder active={active} onBack={() => setActive("dashboard")} />}
       </div>
     </main>
   </div>;
+}
+
+function DashboardSkeleton() {
+  return <><section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[1, 2, 3, 4].map(i => <Card key={i} className="rounded-2xl border-0 bg-white shadow-soft"><CardContent className="p-5"><div className="mb-5 flex justify-between"><Skeleton className="h-4 w-24" /><Skeleton className="h-8 w-8 rounded-xl" /></div><Skeleton className="h-8 w-20" /><Skeleton className="mt-2 h-3 w-32" /></CardContent></Card>)}</section><section className="mt-7 grid gap-6 xl:grid-cols-[1.35fr_1fr]"><Card className="rounded-2xl border-0 bg-white shadow-soft"><CardHeader className="px-6 py-5"><Skeleton className="h-5 w-40" /><Skeleton className="mt-2 h-3 w-48" /></CardHeader><CardContent className="space-y-4 px-6 pb-6">{[1, 2, 3, 4].map(i => <div key={i} className="flex gap-4"><Skeleton className="h-10 w-10 rounded-xl shrink-0" /><div className="space-y-2 flex-1"><Skeleton className="h-4 w-1/3" /><Skeleton className="h-3 w-1/2" /></div></div>)}</CardContent></Card><Card className="rounded-2xl border-0 bg-white shadow-soft"><CardHeader className="px-6 py-5"><Skeleton className="h-5 w-40" /><Skeleton className="mt-2 h-3 w-48" /></CardHeader><CardContent className="px-6 pb-6"><Skeleton className="h-[180px] w-full" /></CardContent></Card></section></>;
 }
 
 function DashboardContent({ summary, reports, projects, setActive }: { summary: any; reports: any; projects: typeof demoProjects; setActive: (id: string) => void }) {
