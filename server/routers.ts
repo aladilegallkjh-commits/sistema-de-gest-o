@@ -5,7 +5,6 @@ import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, roleProcedure, router, publicProcedure } from "./_core/trpc";
 import { createLocalUser, getDb, getUserByUsername } from "./db";
-import { auditLogs, checklistRuns, clients, communications, inventoryItems, inventoryMovements, materialRequests, postSales, productionOrders, projectCosts, projects, proposalItems, proposals, suppliers } from "../drizzle/schema";
 import { createSessionToken } from "./_core/auth";
 import { compare, hash } from "bcryptjs";
 
@@ -16,6 +15,9 @@ const orderInput = z.object({ projectId: z.number().int().positive(), title: z.s
 const stockInput = z.object({ sku: z.string().min(1), name: z.string().min(2), category: z.string().optional(), quantity: z.number().nonnegative(), minimumQuantity: z.number().nonnegative(), averageCost: z.number().nonnegative() });
 const supplierInput = z.object({ name: z.string().min(2), category: z.string().optional(), contactName: z.string().optional(), email: z.string().email().optional().or(z.literal("")), phone: z.string().optional(), paymentTerms: z.string().optional() });
 const costInput = z.object({ projectId: z.number().int().positive(), category: z.enum(["material", "service", "expense"]), description: z.string().min(2), plannedValue: z.number().nonnegative(), actualValue: z.number().nonnegative() });
+const chatInput = z.object({ moduleId: z.string().min(1), content: z.string().min(1) });
+
+import { auditLogs, checklistRuns, clients, communications, inventoryItems, inventoryMovements, materialRequests, postSales, productionOrders, projectCosts, projects, proposalItems, proposals, suppliers, moduleChats } from "../drizzle/schema";
 
 export const appRouter = router({
   system: systemRouter,
@@ -72,6 +74,17 @@ export const appRouter = router({
   checklists: router({ list: protectedProcedure.input(z.object({ orderId: z.number().int().positive() })).query(async ({ input }) => { const db = await getDb(); return db ? db.select().from(checklistRuns).where(eq(checklistRuns.orderId, input.orderId)) : []; }), complete: roleProcedure("producao", "gestor").input(z.object({ id: z.number().int().positive(), evidenceUrl: z.string().optional() })).mutation(async ({ input, ctx }) => { const db = await getDb(); if (!db) throw new Error("Banco indisponível"); return db.update(checklistRuns).set({ status: "done", evidenceUrl: input.evidenceUrl, completedBy: ctx.user.id, completedAt: new Date() }).where(eq(checklistRuns.id, input.id)); }) }),
   communications: router({ list: protectedProcedure.query(async () => { const db = await getDb(); return db ? db.select().from(communications).orderBy(desc(communications.scheduledAt)).limit(100) : []; }), schedule: roleProcedure("comercial", "pos_venda", "gestor").input(z.object({ clientId: z.number().int().positive(), projectId: z.number().int().positive().optional(), stage: z.enum(["proposal_sent", "awaiting_response", "production_started", "delivery", "satisfaction", "post_sale"]), subject: z.string().min(2), body: z.string().optional(), scheduledAt: z.date().optional() })).mutation(async ({ input }) => { const db = await getDb(); if (!db) throw new Error("Banco indisponível"); return db.insert(communications).values(input); }) }),
   materialRequests: router({ list: protectedProcedure.query(async () => { const db = await getDb(); return db ? db.select().from(materialRequests).orderBy(desc(materialRequests.createdAt)).limit(100) : []; }), create: roleProcedure("producao", "compras", "gestor").input(z.object({ description: z.string().min(2), projectId: z.number().int().positive().optional(), orderId: z.number().int().positive().optional(), urgency: z.enum(["normal", "urgent"]).default("normal") })).mutation(async ({ input, ctx }) => { const db = await getDb(); if (!db) throw new Error("Banco indisponível"); return db.insert(materialRequests).values({ ...input, requesterId: ctx.user.id }); }), approve: roleProcedure("compras", "gestor").input(z.object({ id: z.number().int().positive(), status: z.enum(["approved", "rejected", "purchased", "delivered"]) })).mutation(async ({ input }) => { const db = await getDb(); if (!db) throw new Error("Banco indisponível"); return db.update(materialRequests).set({ status: input.status }).where(eq(materialRequests.id, input.id)); }) }),
+  chat: router({
+    list: protectedProcedure.input(z.object({ moduleId: z.string().min(1) })).query(async ({ input }) => {
+      const db = await getDb();
+      return db ? db.select().from(moduleChats).where(eq(moduleChats.moduleId, input.moduleId)).orderBy(desc(moduleChats.createdAt)).limit(50) : [];
+    }),
+    send: protectedProcedure.input(chatInput).mutation(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Banco indisponível");
+      return db.insert(moduleChats).values({ moduleId: input.moduleId, content: input.content, userId: ctx.user.id });
+    })
+  }),
   reports: router({ overview: protectedProcedure.query(async () => { const db = await getDb(); if (!db) return { sold: 0, planned: 0, actual: 0, margin: 0, suppliersAtRisk: 0 }; const [financials, risk] = await Promise.all([db.select({ sold: sql<number>`coalesce(sum(${projects.soldValue}),0)`, planned: sql<number>`coalesce(sum(${projects.plannedCost}),0)`, actual: sql<number>`coalesce(sum(${projects.actualCost}),0)` }).from(projects), db.select({ count: sql<number>`count(*)` }).from(suppliers).where(eq(suppliers.deliveryStatus, "delayed"))]); const sold = Number(financials[0]?.sold ?? 0); const actual = Number(financials[0]?.actual ?? 0); return { sold, planned: Number(financials[0]?.planned ?? 0), actual, margin: sold ? ((sold - actual) / sold) * 100 : 0, suppliersAtRisk: Number(risk[0]?.count ?? 0) }; }) }),
 });
 

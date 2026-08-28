@@ -205,5 +205,15 @@ export const auditLogs = mysqlTable("auditLogs", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const moduleChats = mysqlTable("moduleChats", {
+  id: int("id").autoincrement().primaryKey(),
+  moduleId: varchar("moduleId", { length: 60 }).notNull(),
+  userId: int("userId").notNull(),
+  content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
+export type ModuleChat = typeof moduleChats.$inferSelect;
+export type InsertModuleChat = typeof moduleChats.$inferInsert;
