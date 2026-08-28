@@ -35,20 +35,6 @@ function money(value: number) { return value.toLocaleString("pt-BR", { style: "c
 
 export default function Home() {
   const { user, isAuthenticated, logout, loading } = useAuth({ redirectOnUnauthenticated: true });
-
-  // Enquanto verifica a sessão, mostra tela em branco para evitar flash do dashboard
-  if (loading || !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-[#0f0f0f]">
-        <div className="flex flex-col items-center gap-4">
-          <img src="/logo.png" alt="Multiply Engineering" className="h-16 w-auto object-contain opacity-80 animate-pulse" style={{ mixBlendMode: "screen" }} />
-          <div className="h-1 w-48 rounded-full bg-white/10 overflow-hidden">
-            <div className="h-full bg-emerald-400/60 rounded-full animate-[shimmer_1.5s_ease-in-out_infinite]" style={{ width: "60%" }} />
-          </div>
-        </div>
-      </div>
-    );
-  }
   const [active, setActive] = useState("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -112,6 +98,21 @@ export default function Home() {
   const todayLabel = useMemo(() => {
     return new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   }, []);
+
+  // Enquanto verifica a sessão, mostra tela em branco para evitar flash do dashboard
+  // Importante: Este return early DEVE estar após todos os hooks (useState, useEffect, useQuery, useMemo)
+  if (loading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0f0f0f]">
+        <div className="flex flex-col items-center gap-4">
+          <img src="/logo.png" alt="Multiply Engineering" className="h-16 w-auto object-contain opacity-80 animate-pulse" style={{ mixBlendMode: "screen" }} />
+          <div className="h-1 w-48 rounded-full bg-white/10 overflow-hidden">
+            <div className="h-full bg-emerald-400/60 rounded-full animate-[shimmer_1.5s_ease-in-out_infinite]" style={{ width: "60%" }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return <div className="min-h-screen bg-[#f5f7fb] dark:bg-zinc-950 text-[#172033] dark:text-zinc-50">
     {/* Sidebar — sempre fundo escuro independente do tema */}
