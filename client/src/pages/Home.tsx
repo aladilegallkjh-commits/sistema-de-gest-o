@@ -34,7 +34,21 @@ const stageData = [{ name: "Produção", value: 42, color: "#71717a" }, { name: 
 function money(value: number) { return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }); }
 
 export default function Home() {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, loading } = useAuth({ redirectOnUnauthenticated: true });
+
+  // Enquanto verifica a sessão, mostra tela em branco para evitar flash do dashboard
+  if (loading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0f0f0f]">
+        <div className="flex flex-col items-center gap-4">
+          <img src="/logo.png" alt="Multiply Engineering" className="h-16 w-auto object-contain opacity-80 animate-pulse" style={{ mixBlendMode: "screen" }} />
+          <div className="h-1 w-48 rounded-full bg-white/10 overflow-hidden">
+            <div className="h-full bg-emerald-400/60 rounded-full animate-[shimmer_1.5s_ease-in-out_infinite]" style={{ width: "60%" }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
   const [active, setActive] = useState("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
