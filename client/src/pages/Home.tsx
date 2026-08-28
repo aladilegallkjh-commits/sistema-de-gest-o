@@ -87,8 +87,8 @@ export default function Home() {
         <nav className="space-y-1">
           {visibleModules.filter(item => item.id !== "reports").map(item => {
             const Icon = item.icon; const selected = active === item.id;
-            return <button key={item.id} onClick={() => { setActive(item.id); setMobileOpen(false); }} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${selected ? "bg-white dark:bg-zinc-900 text-[#172033] dark:text-zinc-50 shadow-xl shadow-black/10" : "text-white/60 hover:bg-white dark:bg-zinc-900/10 hover:text-white"}`}>
-              <Icon className={`h-[17px] w-[17px] ${selected ? "text-zinc-800 dark:text-zinc-100" : "text-white/45 group-hover:text-white"}`} />
+            return <button key={item.id} onClick={() => { setActive(item.id); setMobileOpen(false); }} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${selected ? "bg-white text-[#172033] shadow-xl shadow-black/10" : "text-white/60 hover:bg-white/10 hover:text-white"}`}>
+              <Icon className={`h-[17px] w-[17px] ${selected ? "text-zinc-800" : "text-white/45 group-hover:text-white"}`} />
               <span className="flex-1">{item.label}</span>
               {item.id === "dashboard" && totalAlerts > 0 && <span className="rounded-full bg-rose-400 px-1.5 py-0.5 text-[10px] font-bold text-white">{totalAlerts}</span>}
             </button>;
@@ -98,15 +98,15 @@ export default function Home() {
         <nav className="space-y-1">
           {visibleModules.filter(item => item.id === "reports").map(item => {
             const Icon = item.icon;
-            return <button key={item.id} onClick={() => { setActive(item.id); setMobileOpen(false); }} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${active === item.id ? "bg-white dark:bg-zinc-900 text-[#172033] dark:text-zinc-50" : "text-white/60 hover:bg-white dark:bg-zinc-900/10 hover:text-white"}`}>
-              <Icon className={`h-[17px] w-[17px] ${active === item.id ? "text-zinc-800 dark:text-zinc-100" : "text-white/45"}`} />
+            return <button key={item.id} onClick={() => { setActive(item.id); setMobileOpen(false); }} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${active === item.id ? "bg-white text-[#172033]" : "text-white/60 hover:bg-white/10 hover:text-white"}`}>
+              <Icon className={`h-[17px] w-[17px] ${active === item.id ? "text-zinc-800" : "text-white/45"}`} />
               <span>{item.label}</span>
             </button>;
           })}
         </nav>
       </div>
       <div className="absolute bottom-0 w-full border-t border-white/10 p-4">
-        <div className="flex items-center gap-3 rounded-xl bg-white dark:bg-zinc-900/5 p-3">
+        <div className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-zinc-700 text-sm font-bold text-white">{greeting.slice(0, 1).toUpperCase()}</div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-white">{user?.name ?? "Usuário"}</p>
