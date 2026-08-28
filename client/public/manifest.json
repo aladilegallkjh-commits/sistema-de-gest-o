@@ -1,0 +1,23 @@
+{
+  "short_name": "Multiply SGI",
+  "name": "Sistema de Gestão Integrada",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
+  "display": "standalone",
+  "orientation": "any"
+}

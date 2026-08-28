@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3, Bell, Boxes, BriefcaseBusiness, CheckCircle2, ChevronRight, CircleDollarSign, ClipboardCheck, Clock3, Factory, FileText, LayoutDashboard, LogIn, LogOut, Menu, Moon, PackageCheck, Plus, Search, Settings2, ShieldCheck, ShoppingCart, Sparkles, Sun, TrendingUp, Truck, UserRound, UsersRound, X } from "lucide-react";
-import { useMemo, useState, useCallback } from "react";
+import { BarChart3, Bell, Boxes, BriefcaseBusiness, CheckCircle2, ChevronRight, CircleDollarSign, ClipboardCheck, Clock3, Download, Factory, FileText, LayoutDashboard, LogIn, LogOut, Menu, Moon, PackageCheck, Plus, Search, Settings2, ShieldCheck, ShoppingCart, Sparkles, Sun, TrendingUp, Truck, UserRound, UsersRound, X } from "lucide-react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -40,6 +40,30 @@ export default function Home() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const [installPrompt, setInstallPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handlePrompt = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handlePrompt);
+    if ((window as any).deferredInstallPrompt) {
+      setInstallPrompt((window as any).deferredInstallPrompt);
+    }
+    return () => window.removeEventListener("beforeinstallprompt", handlePrompt);
+  }, []);
+
+  const handleInstall = async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    const { outcome } = await installPrompt.userChoice;
+    if (outcome === "accepted") {
+      setInstallPrompt(null);
+      (window as any).deferredInstallPrompt = null;
+    }
+  };
+
   const role = user?.role ?? "gestor";
   // role 'user' agora tem acesso completo (conta recém criada)
   const allowedByRole: Record<string, string[]> = {
@@ -106,6 +130,16 @@ export default function Home() {
         </nav>
       </div>
       <div className="absolute bottom-0 w-full border-t border-white/10 p-4">
+        {installPrompt && (
+          <button
+            onClick={handleInstall}
+            className="mb-3 flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold py-2.5 transition-all"
+            title="Instalar aplicativo"
+          >
+            <Download className="h-3.5 w-3.5 text-emerald-400" />
+            <span>Baixar Aplicativo</span>
+          </button>
+        )}
         <div className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-zinc-700 text-sm font-bold text-white">{greeting.slice(0, 1).toUpperCase()}</div>
           <div className="min-w-0 flex-1">

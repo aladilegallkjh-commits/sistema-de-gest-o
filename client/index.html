@@ -8,15 +8,30 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>Sistema de Gestão Integrada</title>    
-    <!-- THIS IS THE START OF A COMMENT BLOCK, BLOCK TO BE DELETED: Google Fonts here, example:
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    THIS IS THE END OF A COMMENT BLOCK, BLOCK TO BE DELETED -->
+    <link rel="icon" type="image/png" href="/logo.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0f0f0f" />
+    <link rel="apple-touch-icon" href="/logo.png" />
   </head>
 
   <body>
     <div id="root"></div>
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then(reg => console.log('Service Worker registrado!', reg))
+            .catch(err => console.error('Erro ao registrar Service Worker', err));
+        });
+      }
+
+      window.deferredInstallPrompt = null;
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.deferredInstallPrompt = e;
+        window.dispatchEvent(new CustomEvent('pwa-installable'));
+      });
+    </script>
     <script type="module" src="/src/main.tsx"></script>
     <script
       defer
