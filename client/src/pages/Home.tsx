@@ -102,9 +102,13 @@ export default function Home() {
   return <div className="min-h-screen bg-[#f5f7fb] dark:bg-zinc-950 text-[#172033] dark:text-zinc-50">
     {/* Sidebar — sempre fundo escuro independente do tema */}
     <aside className={`fixed inset-y-0 left-0 z-50 w-[264px] border-r border-white/5 bg-[#0f0f0f] text-white transition-transform duration-200 lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
-      <div className="flex h-20 items-center justify-between border-b border-white/10 px-4">
-        <img src="/logo.png" alt="Multiply Engineering" className="h-12 w-auto object-contain" style={{ mixBlendMode: "screen" }} />
-        <button onClick={() => setMobileOpen(false)} className="lg:hidden"><X className="h-5 w-5 text-white/60" /></button>
+      <div className="flex h-20 items-center gap-3 border-b border-white/10 px-4">
+        <img src="/logo.png" alt="Multiply Engineering" className="h-10 w-auto object-contain" style={{ mixBlendMode: "screen" }} />
+        <div className="flex flex-col">
+          <span className="font-sans font-black tracking-wider text-[15px] text-white uppercase leading-none">Multiply</span>
+          <span className="text-[9px] text-emerald-400 tracking-[0.16em] font-semibold uppercase mt-0.5">Engineering</span>
+        </div>
+        <button onClick={() => setMobileOpen(false)} className="lg:hidden ml-auto"><X className="h-5 w-5 text-white/60" /></button>
       </div>
       <div className="px-4 pt-7">
         <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Operação</p>
