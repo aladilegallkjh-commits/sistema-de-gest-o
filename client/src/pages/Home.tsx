@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart3, Bell, Boxes, BriefcaseBusiness, CheckCircle2, ChevronRight, CircleDollarSign, ClipboardCheck, Clock3, Factory, FileText, LayoutDashboard, LogIn, Menu, Moon, PackageCheck, Plus, Search, Settings2, ShieldCheck, ShoppingCart, Sparkles, Sun, TrendingUp, Truck, UserRound, UsersRound, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -37,34 +37,118 @@ export default function Home() {
   const { user, isAuthenticated } = useAuth();
   const [active, setActive] = useState("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const role = user?.role ?? "gestor";
-  const allowedByRole: Record<string, string[]> = { admin: modules.map(item => item.id), gestor: modules.map(item => item.id), comercial: ["dashboard", "commercial", "reports"], producao: ["dashboard", "production", "stock"], compras: ["dashboard", "stock", "suppliers", "costs"], pos_venda: ["dashboard", "post-sale", "reports"], user: ["dashboard"] };
-  const visibleModules = modules.filter(item => (allowedByRole[role] ?? allowedByRole.user).includes(item.id));
+  // role 'user' agora tem acesso completo (conta recém criada)
+  const allowedByRole: Record<string, string[]> = {
+    admin: modules.map(item => item.id),
+    gestor: modules.map(item => item.id),
+    user: modules.map(item => item.id),
+    comercial: ["dashboard", "commercial", "reports"],
+    producao: ["dashboard", "production", "stock"],
+    compras: ["dashboard", "stock", "suppliers", "costs"],
+    pos_venda: ["dashboard", "post-sale", "reports"],
+  };
+  const visibleModules = modules.filter(item => (allowedByRole[role] ?? modules.map(m => m.id)).includes(item.id));
   const summaryQuery = trpc.dashboard.summary.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const reportsQuery = trpc.reports.overview.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const projectsQuery = trpc.projects.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const productionQuery = trpc.production.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const clientsQuery = trpc.clients.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const isLoading = summaryQuery.isLoading || reportsQuery.isLoading || projectsQuery.isLoading;
-  const summary = summaryQuery.data ?? { projects: 12, proposals: 8, orders: 16, clients: 34, stockAlerts: 3, overdueOrders: 2, budgetAlerts: 1, postSaleToday: 4 };
-  const reports = reportsQuery.data ?? { sold: 18500, planned: 10200, actual: 9840, margin: 44.7, suppliersAtRisk: 1 };
+  const summary = summaryQuery.data ?? { projects: 0, proposals: 0, orders: 0, clients: 0, stockAlerts: 0, overdueOrders: 0, budgetAlerts: 0, postSaleToday: 0 };
+  const reports = reportsQuery.data ?? { sold: 0, planned: 0, actual: 0, margin: 0, suppliersAtRisk: 0 };
   const currentModule = visibleModules.find(item => item.id === active) ?? visibleModules[0];
-  const greeting = user?.name?.split(" ")[0] ?? "Leandro";
+  const greeting = user?.name?.split(" ")[0] ?? "Usuário";
+  const totalAlerts = (summary.overdueOrders ?? 0) + (summary.budgetAlerts ?? 0) + (summary.stockAlerts ?? 0) + (summary.postSaleToday ?? 0);
   const visibleProjects = useMemo(() => projectsQuery.data?.slice(0, 3).map((project, index) => ({ code: project.code, name: project.name, client: `Cliente #${project.clientId}`, status: project.status === "in_progress" ? "Em produção" : project.status === "post_sale" ? "Pós-venda" : "Planejamento", progress: project.status === "delivered" ? 100 : project.status === "in_progress" ? 68 : 38, value: money(Number(project.soldValue ?? 0)), margin: Number(project.soldValue ?? 0) ? `${(((Number(project.soldValue ?? 0) - Number(project.actualCost ?? 0)) / Number(project.soldValue ?? 0)) * 100).toFixed(1).replace(".", ",")}%` : "0%", tone: ["blue", "violet", "emerald"][index % 3] })) ?? demoProjects, [projectsQuery.data]);
+  // data dinâmica
+  const todayLabel = useMemo(() => {
+    return new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  }, []);
 
   return <div className="min-h-screen bg-[#f5f7fb] text-[#172033]">
+    {/* Sidebar — sempre fundo escuro independente do tema */}
     <aside className={`fixed inset-y-0 left-0 z-50 w-[264px] border-r border-white/5 bg-[#0f0f0f] text-white transition-transform duration-200 lg:translate-x-0 ${mobileOpen ? "translate-x-0" : "-translate-x-full"}`}>
       <div className="flex h-20 items-center justify-between border-b border-white/10 px-4">
         <img src="/logo.png" alt="Multiply Engineering" className="h-12 w-auto object-contain" style={{ mixBlendMode: "screen" }} />
         <button onClick={() => setMobileOpen(false)} className="lg:hidden"><X className="h-5 w-5 text-white/60" /></button>
       </div>
-      <div className="px-4 pt-7"><p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Operação</p><nav className="space-y-1">{visibleModules.filter(item => item.id !== "reports").map(item => { const Icon = item.icon; const selected = active === item.id; return <button key={item.id} onClick={() => { setActive(item.id); setMobileOpen(false); }} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${selected ? "bg-white text-[#172033] shadow-xl shadow-black/10" : "text-white/60 hover:bg-white/10 hover:text-white"}`}><Icon className={`h-[17px] w-[17px] ${selected ? "text-zinc-800" : "text-white/45 group-hover:text-white"}`} /><span className="flex-1">{item.label}</span>{item.id === "dashboard" && <span className="rounded-full bg-rose-400 px-1.5 py-0.5 text-[10px] font-bold text-white">6</span>}</button> })}</nav><p className="mb-3 mt-8 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Gestão</p><nav className="space-y-1">{visibleModules.filter(item => item.id === "reports").map(item => { const Icon = item.icon; return <button key={item.id} onClick={() => { setActive(item.id); setMobileOpen(false); }} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${active === item.id ? "bg-white text-[#172033]" : "text-white/60 hover:bg-white/10 hover:text-white"}`}><Icon className="h-[17px] w-[17px] text-white/45" /><span>{item.label}</span></button> })}</nav></div>
-      <div className="absolute bottom-0 w-full border-t border-white/10 p-4"><div className="flex items-center gap-3 rounded-xl bg-white/5 p-3"><div className="grid h-9 w-9 place-items-center rounded-full bg-zinc-800 text-sm font-bold">{greeting.slice(0, 1)}</div><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">{user?.name ?? "Conta de demonstração"}</p><p className="truncate text-[11px] text-white/40">{user?.email ?? "gestor@empresa.com"}</p></div>{toggleTheme && <button onClick={toggleTheme} className="text-white/35 hover:text-white transition-colors" title="Alternar tema">{theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>}<button className="text-white/35 hover:text-white transition-colors"><Settings2 className="h-4 w-4" /></button></div></div>
+      <div className="px-4 pt-7">
+        <p className="mb-3 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Operação</p>
+        <nav className="space-y-1">
+          {visibleModules.filter(item => item.id !== "reports").map(item => {
+            const Icon = item.icon; const selected = active === item.id;
+            return <button key={item.id} onClick={() => { setActive(item.id); setMobileOpen(false); }} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${selected ? "bg-white text-[#172033] shadow-xl shadow-black/10" : "text-white/60 hover:bg-white/10 hover:text-white"}`}>
+              <Icon className={`h-[17px] w-[17px] ${selected ? "text-zinc-800" : "text-white/45 group-hover:text-white"}`} />
+              <span className="flex-1">{item.label}</span>
+              {item.id === "dashboard" && totalAlerts > 0 && <span className="rounded-full bg-rose-400 px-1.5 py-0.5 text-[10px] font-bold text-white">{totalAlerts}</span>}
+            </button>;
+          })}
+        </nav>
+        <p className="mb-3 mt-8 px-3 text-[10px] font-bold uppercase tracking-[0.18em] text-white/35">Gestão</p>
+        <nav className="space-y-1">
+          {visibleModules.filter(item => item.id === "reports").map(item => {
+            const Icon = item.icon;
+            return <button key={item.id} onClick={() => { setActive(item.id); setMobileOpen(false); }} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm transition ${active === item.id ? "bg-white text-[#172033]" : "text-white/60 hover:bg-white/10 hover:text-white"}`}>
+              <Icon className={`h-[17px] w-[17px] ${active === item.id ? "text-zinc-800" : "text-white/45"}`} />
+              <span>{item.label}</span>
+            </button>;
+          })}
+        </nav>
+      </div>
+      <div className="absolute bottom-0 w-full border-t border-white/10 p-4">
+        <div className="flex items-center gap-3 rounded-xl bg-white/5 p-3">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-zinc-700 text-sm font-bold text-white">{greeting.slice(0, 1).toUpperCase()}</div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold text-white">{user?.name ?? "Usuário"}</p>
+            <p className="truncate text-[11px] text-white/40">{user?.email ?? (user?.role ? `Perfil: ${user.role}` : "")}</p>
+          </div>
+          {toggleTheme && <button onClick={toggleTheme} className="shrink-0 text-white/35 hover:text-white transition-colors" title="Alternar tema">{theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>}
+          <button className="shrink-0 text-white/35 hover:text-white transition-colors"><Settings2 className="h-4 w-4" /></button>
+        </div>
+      </div>
     </aside>
     {mobileOpen && <button aria-label="Fechar menu" onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-[#101828]/50 backdrop-blur-sm lg:hidden" />}
+    {/* Modal de busca rápida */}
+    {searchOpen && (
+      <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4">
+        <button className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSearchOpen(false)} />
+        <div className="relative z-10 w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden">
+          <div className="flex items-center gap-3 border-b px-4 py-3">
+            <Search className="h-4 w-4 text-zinc-400" />
+            <input autoFocus className="flex-1 bg-transparent text-sm outline-none placeholder:text-zinc-400" placeholder="Buscar módulo..." onChange={e => {
+              const q = e.target.value.toLowerCase();
+              const found = visibleModules.find(m => m.label.toLowerCase().includes(q));
+              if (found) { setActive(found.id); setSearchOpen(false); }
+            }} />
+            <button onClick={() => setSearchOpen(false)}><X className="h-4 w-4 text-zinc-400" /></button>
+          </div>
+          <div className="p-2">{visibleModules.map(m => { const Icon = m.icon; return <button key={m.id} onClick={() => { setActive(m.id); setSearchOpen(false); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm hover:bg-zinc-50 transition-colors"><Icon className="h-4 w-4 text-zinc-500" /><span>{m.label}</span></button>; })}</div>
+        </div>
+      </div>
+    )}
     <main className="min-h-screen lg:pl-[264px]">
-      <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-[#e5e9f2] bg-[#f5f7fb]/90 px-5 backdrop-blur-xl sm:px-8"><div className="flex items-center gap-3"><button onClick={() => setMobileOpen(true)} className="rounded-lg border border-[#e5e9f2] bg-white p-2 lg:hidden"><Menu className="h-5 w-5" /></button><div><p className="text-xs font-medium text-[#8792a8]">Quarta-feira, 19 de agosto de 2026</p><h1 className="mt-0.5 text-xl font-semibold tracking-tight">{currentModule.label}</h1></div></div><div className="flex items-center gap-2 sm:gap-4"><div className="hidden items-center gap-2 rounded-xl border border-[#e5e9f2] bg-white px-3 py-2 text-sm text-[#9aa3b5] md:flex"><Search className="h-4 w-4" /> Pesquisar <span className="ml-6 rounded bg-[#f0f2f7] px-1.5 py-0.5 text-[10px]">⌘ K</span></div><button className="relative rounded-xl border border-[#e5e9f2] bg-white p-2.5 text-[#64708a] hover:text-zinc-800"><Bell className="h-[18px] w-[18px]" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-rose-500 ring-2 ring-white" /></button>{!isAuthenticated && <Button onClick={() => window.location.href = "/login"} className="hidden gap-2 rounded-xl bg-zinc-800 hover:bg-zinc-900 px-4 shadow-lg shadow-zinc-200 sm:flex"><LogIn className="h-4 w-4" /> Entrar</Button>}</div></header>
+      <header className="sticky top-0 z-30 flex h-20 items-center justify-between border-b border-[#e5e9f2] bg-[#f5f7fb]/90 px-5 backdrop-blur-xl sm:px-8">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setMobileOpen(true)} className="rounded-lg border border-[#e5e9f2] bg-white p-2 lg:hidden"><Menu className="h-5 w-5" /></button>
+          <div>
+            <p className="text-xs font-medium capitalize text-[#8792a8]">{todayLabel}</p>
+            <h1 className="mt-0.5 text-xl font-semibold tracking-tight">{currentModule?.label}</h1>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <button onClick={() => setSearchOpen(true)} className="hidden items-center gap-2 rounded-xl border border-[#e5e9f2] bg-white px-3 py-2 text-sm text-[#9aa3b5] md:flex hover:border-zinc-300 transition-colors">
+            <Search className="h-4 w-4" /> Pesquisar <span className="ml-6 rounded bg-[#f0f2f7] px-1.5 py-0.5 text-[10px]">⌘ K</span>
+          </button>
+          <button className="relative rounded-xl border border-[#e5e9f2] bg-white p-2.5 text-[#64708a] hover:text-zinc-800 transition-colors">
+            <Bell className="h-[18px] w-[18px]" />
+            {totalAlerts > 0 && <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white ring-2 ring-white">{totalAlerts > 9 ? "9+" : totalAlerts}</span>}
+          </button>
+          {!isAuthenticated && <Button onClick={() => window.location.href = "/login"} className="hidden gap-2 rounded-xl bg-zinc-800 hover:bg-zinc-900 px-4 shadow-lg shadow-zinc-200 sm:flex"><LogIn className="h-4 w-4" /> Entrar</Button>}
+        </div>
+      </header>
       <div className="mx-auto max-w-[1440px] px-5 py-7 sm:px-8 sm:py-9"><div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="mb-2 flex items-center gap-2 text-sm font-medium text-zinc-700"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Operação saudável</p><h2 className="text-3xl font-semibold tracking-[-0.04em] sm:text-[34px]">Bom dia, {greeting}.</h2><p className="mt-2 max-w-2xl text-sm text-[#7b879c]">Aqui está o panorama do seu negócio. Existem <strong className="font-semibold text-[#172033]">6 pontos</strong> que merecem atenção hoje.</p></div><Button onClick={() => setActive("commercial")} className="w-fit gap-2 rounded-xl bg-[#172033] px-4 shadow-xl shadow-slate-300/30"><Plus className="h-4 w-4" /> Nova proposta</Button></div>
         {isLoading && active === "dashboard" ? <DashboardSkeleton /> : active === "dashboard" ? <DashboardContent summary={summary} reports={reports} projects={visibleProjects} setActive={setActive} /> : <ModulePlaceholder active={active} onBack={() => setActive("dashboard")} />}
       </div>
