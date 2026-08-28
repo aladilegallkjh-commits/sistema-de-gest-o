@@ -27,14 +27,10 @@ const modules = [
   { id: "reports", label: "Relatórios", icon: BarChart3 },
 ];
 
-const demoProjects = [
-  { code: "PRJ-024", name: "Modernização da recepção", client: "Grupo Orion", status: "Em produção", progress: 68, value: "R$ 18.500", margin: "44,7%", tone: "blue" },
-  { code: "PRJ-021", name: "Identidade visual completa", client: "Casa Nômade", status: "Em aprovação", progress: 38, value: "R$ 12.800", margin: "38,2%", tone: "violet" },
-  { code: "PRJ-019", name: "Sinalização corporativa", client: "Norte & Sul", status: "Pós-venda", progress: 100, value: "R$ 8.950", margin: "51,4%", tone: "emerald" },
-];
+const demoProjects: { code: string; name: string; client: string; status: string; progress: number; value: string; margin: string; tone: string }[] = [];
 
-const weekly = [{ day: "Seg", value: 4 }, { day: "Ter", value: 7 }, { day: "Qua", value: 5 }, { day: "Qui", value: 9 }, { day: "Sex", value: 8 }, { day: "Sáb", value: 3 }];
-const stageData = [{ name: "Produção", value: 42, color: "#71717a" }, { name: "Aprovação", value: 23, color: "#8b5cf6" }, { name: "Entrega", value: 18, color: "#10b981" }, { name: "Pós-venda", value: 17, color: "#f59e0b" }];
+const weekly: { day: string; value: number }[] = [];
+const stageData: { name: string; value: number; color: string }[] = [];
 
 function money(value: number) { return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }); }
 
@@ -286,13 +282,13 @@ function ModulePlaceholder({ active, onBack, onOpenForm, onOpenChat }: { active:
   const isLoading = clientsQuery.isLoading || proposalsQuery.isLoading || productionQuery.isLoading || stockQuery.isLoading || suppliersQuery.isLoading || postSaleQuery.isLoading;
 
   const content: Record<string, { intro: string; stats: [string, string][]; rows: [string, string, string][] }> = {
-    commercial: { intro: "Acompanhe propostas, clientes e conversões em um único pipeline.", stats: [["Propostas abertas", "8"], ["Em aprovação", "3"], ["Conversão média", "62%"]], rows: [["PRP-018", "Grupo Orion · Modernização", "Em aprovação"], ["PRP-017", "Casa Nômade · Identidade", "Enviada"], ["PRP-016", "Norte & Sul · Sinalização", "Aprovada"]] },
-    production: { intro: "Ordens de produção, prazos e checklists sob controle da equipe.", stats: [["Ordens ativas", "16"], ["Em risco", "2"], ["Concluídas no mês", "28"]], rows: [["OP-0084", "Modernização da recepção", "Atrasada"], ["OP-0083", "Identidade visual completa", "Em andamento"], ["OP-0081", "Sinalização corporativa", "Concluída"]] },
-    stock: { intro: "Visibilidade sobre materiais, reservas e requisições críticas.", stats: [["Itens cadastrados", "248"], ["Abaixo do mínimo", "3"], ["Requisições abertas", "7"]], rows: [["MAT-042", "Chapa MDF naval 15mm", "Repor"], ["MAT-018", "Adesivo vinílico branco", "Disponível"], ["MAT-007", "Perfil de alumínio 30mm", "Reservado"]] },
-    suppliers: { intro: "Acompanhe fornecedores, condições e entregas que impactam seus prazos.", stats: [["Fornecedores ativos", "38"], ["Entregas pendentes", "4"], ["Em atraso", "1"]], rows: [["SUP-014", "Alumínios Prime", "Entrega hoje"], ["SUP-009", "Print House", "No prazo"], ["SUP-022", "MDF & Cia", "Em atraso"]] },
-    costs: { intro: "Compare o previsto e o realizado para proteger a margem de cada projeto.", stats: [["Custo previsto", "R$ 10.200"], ["Custo realizado", "R$ 9.840"], ["Margem projetada", "44,7%"]], rows: [["PRJ-024", "Modernização da recepção", "+6,2% de desvio"], ["PRJ-021", "Identidade visual completa", "Dentro do plano"], ["PRJ-019", "Sinalização corporativa", "Margem protegida"]] },
-    "post-sale": { intro: "Nunca perca o momento certo de cuidar do relacionamento e gerar recorrência.", stats: [["Contatos hoje", "4"], ["Satisfeitos", "18"], ["Oportunidades", "6"]], rows: [["Grupo Orion", "Pesquisa de satisfação", "Agendado hoje"], ["Casa Nômade", "Orientação de manutenção", "Pendente"], ["Norte & Sul", "Oportunidade de recompra", "Em negociação"]] },
-    reports: { intro: "Relatórios gerenciais para transformar operação em decisão.", stats: [["Produtividade", "+18,6%"], ["Giro de estoque", "4,2x"], ["Projetos no prazo", "86%"]], rows: [["Produção", "Ordens concluídas por semana", "+18,6%"], ["Custos", "Realizado vs. previsto", "96,5%"], ["Pós-venda", "Contatos convertidos", "32%"]] },
+    commercial: { intro: "Acompanhe propostas, clientes e conversões em um único pipeline.", stats: [["Propostas abertas", "0"], ["Em aprovação", "0"], ["Conversão média", "—"]], rows: [] },
+    production: { intro: "Ordens de produção, prazos e checklists sob controle da equipe.", stats: [["Ordens ativas", "0"], ["Em risco", "0"], ["Concluídas no mês", "0"]], rows: [] },
+    stock: { intro: "Visibilidade sobre materiais, reservas e requisições críticas.", stats: [["Itens cadastrados", "0"], ["Abaixo do mínimo", "0"], ["Requisições abertas", "0"]], rows: [] },
+    suppliers: { intro: "Acompanhe fornecedores, condições e entregas que impactam seus prazos.", stats: [["Fornecedores ativos", "0"], ["Entregas pendentes", "0"], ["Em atraso", "0"]], rows: [] },
+    costs: { intro: "Compare o previsto e o realizado para proteger a margem de cada projeto.", stats: [["Custo previsto", "R$ 0"], ["Custo realizado", "R$ 0"], ["Margem projetada", "—"]], rows: [] },
+    "post-sale": { intro: "Nunca perca o momento certo de cuidar do relacionamento e gerar recorrência.", stats: [["Contatos hoje", "0"], ["Satisfeitos", "0"], ["Oportunidades", "0"]], rows: [] },
+    reports: { intro: "Relatórios gerenciais para transformar operação em decisão.", stats: [["Produtividade", "—"], ["Giro de estoque", "—"], ["Projetos no prazo", "—"]], rows: [] },
   };
   const data = content[active] ?? content.commercial;
   const liveRows: [string, string, string][] = active === "commercial" && proposalsQuery.data?.length ? proposalsQuery.data.slice(0, 8).map(proposal => [proposal.code, proposal.title, proposal.status]) : active === "production" && productionQuery.data?.length ? productionQuery.data.slice(0, 8).map(order => [order.code, order.title, order.status]) : active === "stock" && stockQuery.data?.length ? stockQuery.data.slice(0, 8).map(item => [item.sku, item.name, Number(item.quantity) <= Number(item.minimumQuantity) ? "Repor" : "Disponível"]) : active === "suppliers" && suppliersQuery.data?.length ? suppliersQuery.data.slice(0, 8).map(supplier => [`SUP-${supplier.id}`, supplier.name, supplier.deliveryStatus]) : active === "post-sale" && postSaleQuery.data?.length ? postSaleQuery.data.slice(0, 8).map(entry => [`PS-${entry.id}`, `Projeto #${entry.projectId}`, entry.stage]) : data.rows;
