@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3, Bell, Boxes, BriefcaseBusiness, CheckCircle2, ChevronRight, CircleDollarSign, ClipboardCheck, Clock3, Download, Factory, FileText, LayoutDashboard, LogIn, LogOut, Menu, Moon, PackageCheck, Plus, Search, Settings2, ShieldCheck, ShoppingCart, Sparkles, Sun, TrendingUp, Truck, UserRound, UsersRound, X } from "lucide-react";
+import { BarChart3, Bell, Boxes, BriefcaseBusiness, CheckCircle2, ChevronRight, CircleDollarSign, ClipboardCheck, Clock3, Download, Factory, FileText, LayoutDashboard, LogIn, LogOut, Menu, MessageSquare, Moon, PackageCheck, Plus, Search, Settings2, ShieldCheck, ShoppingCart, Sparkles, Sun, TrendingUp, Truck, UserRound, UsersRound, X } from "lucide-react";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
