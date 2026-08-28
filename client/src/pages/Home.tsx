@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BarChart3, Bell, Boxes, BriefcaseBusiness, CheckCircle2, ChevronRight, CircleDollarSign, ClipboardCheck, Clock3, Factory, FileText, LayoutDashboard, LogIn, Menu, Moon, PackageCheck, Plus, Search, Settings2, ShieldCheck, ShoppingCart, Sparkles, Sun, TrendingUp, Truck, UserRound, UsersRound, X } from "lucide-react";
+import { BarChart3, Bell, Boxes, BriefcaseBusiness, CheckCircle2, ChevronRight, CircleDollarSign, ClipboardCheck, Clock3, Factory, FileText, LayoutDashboard, LogIn, LogOut, Menu, Moon, PackageCheck, Plus, Search, Settings2, ShieldCheck, ShoppingCart, Sparkles, Sun, TrendingUp, Truck, UserRound, UsersRound, X } from "lucide-react";
 import { useMemo, useState, useCallback } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -34,7 +34,7 @@ const stageData = [{ name: "Produção", value: 42, color: "#71717a" }, { name: 
 function money(value: number) { return value.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }); }
 
 export default function Home() {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, logout } = useAuth();
   const [active, setActive] = useState("dashboard");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -106,7 +106,7 @@ export default function Home() {
             <p className="truncate text-[11px] text-white/40">{user?.email ?? (user?.role ? `Perfil: ${user.role}` : "")}</p>
           </div>
           {toggleTheme && <button onClick={toggleTheme} className="shrink-0 text-white/35 hover:text-white transition-colors" title="Alternar tema">{theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}</button>}
-          <button className="shrink-0 text-white/35 hover:text-white transition-colors"><Settings2 className="h-4 w-4" /></button>
+          <button onClick={() => logout()} className="shrink-0 text-white/35 hover:text-rose-400 transition-colors" title="Sair da conta"><LogOut className="h-4 w-4" /></button>
         </div>
       </div>
     </aside>
