@@ -4,10 +4,10 @@ import { COOKIE_NAME } from "@shared/const";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { protectedProcedure, roleProcedure, router, publicProcedure } from "./_core/trpc";
-import { getDb, getUserByUsername } from "./db";
+import { createLocalUser, getDb, getUserByUsername } from "./db";
 import { auditLogs, checklistRuns, clients, communications, inventoryItems, inventoryMovements, materialRequests, postSales, productionOrders, projectCosts, projects, proposalItems, proposals, suppliers } from "../drizzle/schema";
 import { createSessionToken } from "./_core/auth";
-import { compare } from "bcryptjs";
+import { compare, hash } from "bcryptjs";
 
 const clientInput = z.object({ name: z.string().min(2), company: z.string().optional(), email: z.string().email().optional().or(z.literal("")), phone: z.string().optional(), segment: z.string().optional() });
 const proposalInput = z.object({ clientId: z.number().int().positive(), title: z.string().min(2), totalValue: z.number().nonnegative(), conditions: z.string().optional() });
@@ -39,6 +39,22 @@ export const appRouter = router({
       const cookieOptions = getSessionCookieOptions(ctx.req);
       ctx.res.clearCookie(COOKIE_NAME, { ...cookieOptions, maxAge: -1 });
       return { success: true } as const;
+    }),
+    register: publicProcedure.input(z.object({
+      name: z.string().min(2, "Nome deve ter ao menos 2 caracteres"),
+      username: z.string().min(3, "Usuário deve ter ao menos 3 caracteres"),
+      password: z.string().min(6, "Senha deve ter ao menos 6 caracteres"),
+    })).mutation(async ({ input, ctx }) => {
+      const existing = await getUserByUsername(input.username);
+      if (existing) throw new Error("Esse nome de usuário já está em uso.");
+      const passwordHash = await hash(input.password, 10);
+      await createLocalUser(input.username, passwordHash, input.name, "user");
+      const user = await getUserByUsername(input.username);
+      if (!user) throw new Error("Erro ao criar conta. Tente novamente.");
+      const token = await createSessionToken(user.id, user.username ?? user.name ?? "", user.role, { expiresInMs: 1000 * 60 * 60 * 24 * 30 });
+      const cookieOptions = getSessionCookieOptions(ctx.req);
+      ctx.res.cookie(COOKIE_NAME, token, { ...cookieOptions, maxAge: 1000 * 60 * 60 * 24 * 30 });
+      return { success: true, user: { id: user.id, name: user.name, role: user.role } };
     }),
   }),
   dashboard: router({
