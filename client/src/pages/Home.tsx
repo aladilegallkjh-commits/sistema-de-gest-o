@@ -9,6 +9,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart3, Bell, Boxes, BriefcaseBusiness, CheckCircle2, ChevronRight, CircleDollarSign, ClipboardCheck, Clock3, Download, Factory, FileText, LayoutDashboard, LogIn, LogOut, Menu, Moon, PackageCheck, Plus, Search, Settings2, ShieldCheck, ShoppingCart, Sparkles, Sun, TrendingUp, Truck, UserRound, UsersRound, X } from "lucide-react";
 import { useMemo, useState, useCallback, useEffect } from "react";
 import { Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useTheme } from "@/contexts/ThemeContext";
 
 const modules = [
@@ -39,6 +43,7 @@ export default function Home() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const [installPrompt, setInstallPrompt] = useState<any>(null);
 
@@ -247,9 +252,11 @@ export default function Home() {
         </div>
       </header>
       <div className="mx-auto max-w-[1440px] px-5 py-7 sm:px-8 sm:py-9"><div className="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end"><div><p className="mb-2 flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300"><span className="h-2 w-2 rounded-full bg-emerald-500" /> Operação saudável</p><h2 className="text-3xl font-semibold tracking-[-0.04em] sm:text-[34px]">Bom dia, {greeting}.</h2><p className="mt-2 max-w-2xl text-sm text-[#7b879c] dark:text-zinc-400">Aqui está o panorama do seu negócio. Existem <strong className="font-semibold text-[#172033] dark:text-zinc-50">6 pontos</strong> que merecem atenção hoje.</p></div><Button onClick={() => setActive("commercial")} className="w-fit gap-2 rounded-xl bg-zinc-900 hover:bg-zinc-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 dark:text-white px-4 shadow-xl"><Plus className="h-4 w-4" /> Nova proposta</Button></div>
-        {isLoading && active === "dashboard" ? <DashboardSkeleton /> : active === "dashboard" ? <DashboardContent summary={summary} reports={reports} projects={visibleProjects} setActive={setActive} /> : <ModulePlaceholder active={active} onBack={() => setActive("dashboard")} />}
+        {isLoading && active === "dashboard" ? <DashboardSkeleton /> : active === "dashboard" ? <DashboardContent summary={summary} reports={reports} projects={visibleProjects} setActive={setActive} /> : <ModulePlaceholder active={active} onBack={() => setActive("dashboard")} onOpenForm={() => setFormOpen(true)} />}
       </div>
     </main>
+
+    <RecordFormSheet open={formOpen} onOpenChange={setFormOpen} activeModule={active} />
   </div>;
 }
 
@@ -264,7 +271,7 @@ function DashboardContent({ summary, reports, projects, setActive }: { summary: 
   return <><section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{metrics.map(metric => { const Icon = metric.icon; return <Card key={metric.label} className="group overflow-hidden rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-[0_8px_28px_rgba(25,45,90,0.05)] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl"><CardContent className="relative p-5"><div className={`absolute right-0 top-0 h-24 w-24 translate-x-8 -translate-y-8 rounded-full opacity-10 transition-transform duration-500 group-hover:scale-110 ${metric.color === "zinc" ? "bg-zinc-800 dark:bg-zinc-100 dark:bg-zinc-800" : metric.color === "violet" ? "bg-violet-500" : metric.color === "emerald" ? "bg-emerald-500" : "bg-amber-500"}`} /><div className="mb-5 flex items-start justify-between"><p className="text-xs font-medium text-[#8792a8] dark:text-zinc-400">{metric.label}</p><div className={`rounded-xl p-2 transition-transform duration-300 group-hover:rotate-6 ${metric.color === "zinc" ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100" : metric.color === "violet" ? "bg-violet-50 text-violet-600" : metric.color === "emerald" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"}`}><Icon className="h-4 w-4" /></div></div><p className="text-[28px] font-semibold tracking-[-0.05em] text-[#172033] dark:text-zinc-50">{metric.value}</p><p className="mt-2 text-[11px] font-medium text-emerald-600">{metric.detail}</p></CardContent></Card> })}</section><section className="mt-7 grid gap-6 xl:grid-cols-[1.35fr_1fr]"><Card className="rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-[0_8px_28px_rgba(25,45,90,0.05)]"><CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-[#eef1f6] dark:border-zinc-800 px-6 py-5"><div><CardTitle className="text-base font-semibold">Central de atenção</CardTitle><p className="mt-1 text-xs text-[#96a0b2] dark:text-zinc-400">Prioridades que pedem uma ação hoje</p></div><Badge variant="outline" className="rounded-full border-rose-100 bg-rose-50 text-rose-600">6 alertas</Badge></CardHeader><CardContent className="p-0">{alerts.map((alert, index) => { const Icon = alert.icon; return <button onClick={() => setActive(alert.type === "Estoque" ? "stock" : alert.type === "Cliente" ? "post-sale" : alert.type === "Atenção" ? "costs" : "production")} key={alert.type} className="group flex w-full items-center gap-4 border-b border-[#f0f2f6] dark:border-zinc-800 px-6 py-4 text-left last:border-0 hover:bg-[#fbfcfe] dark:bg-zinc-800/50 transition-colors"><div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl transition-transform duration-300 group-hover:scale-105 ${alert.tone === "rose" ? "bg-rose-50 text-rose-500" : alert.tone === "amber" ? "bg-amber-50 text-amber-500" : alert.tone === "cyan" ? "bg-cyan-50 text-cyan-600" : "bg-emerald-50 text-emerald-600"}`}><Icon className="h-[18px] w-[18px]" /></div><div className="min-w-0 flex-1"><div className="mb-1 flex items-center gap-2"><span className={`text-[10px] font-bold uppercase tracking-wider ${alert.tone === "rose" ? "text-rose-500" : alert.tone === "amber" ? "text-amber-500" : alert.tone === "cyan" ? "text-cyan-600" : "text-emerald-600"}`}>{alert.type}</span><span className="h-1 w-1 rounded-full bg-[#d7dce6]" /><p className="truncate text-sm font-medium text-[#273249] dark:text-zinc-50">{alert.title}</p></div><p className="truncate text-xs text-[#97a1b2] dark:text-zinc-400">{alert.text}</p></div><span className="hidden items-center gap-1 text-xs font-semibold text-zinc-800 dark:text-zinc-100 opacity-0 transition group-hover:opacity-100 sm:flex translate-x-2 group-hover:translate-x-0">{alert.action}<ChevronRight className="h-3.5 w-3.5" /></span></button> })}</CardContent></Card><Card className="rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-[0_8px_28px_rgba(25,45,90,0.05)] transition-all duration-300 hover:shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 px-6 pb-0 pt-5"><div><CardTitle className="text-base font-semibold">Ritmo de produção</CardTitle><p className="mt-1 text-xs text-[#96a0b2] dark:text-zinc-400">Ordens concluídas nesta semana</p></div><div className="rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-semibold text-emerald-600">+18,6%</div></CardHeader><CardContent className="px-4 pb-5 pt-6"><div className="h-[180px] w-full"><ResponsiveContainer width="100%" height="100%"><BarChart data={weekly} barSize={22}><CartesianGrid vertical={false} stroke={theme === 'dark' ? '#27272a' : '#eef1f6'} /><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: theme === 'dark' ? '#a1a1aa' : '#9aa3b5', fontSize: 11 }} /><YAxis hide /><Tooltip cursor={{ fill: theme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f6f8fc' }} contentStyle={{ border: "0", borderRadius: "12px", boxShadow: "0 8px 24px rgba(0,0,0,.15)", backgroundColor: theme === 'dark' ? '#18181b' : '#ffffff', color: theme === 'dark' ? '#ffffff' : '#172033', fontSize: 12 }} /><Bar dataKey="value" radius={[6, 6, 2, 2]} fill={theme === 'dark' ? '#f4f4f5' : '#27272a'} /></BarChart></ResponsiveContainer></div></CardContent></Card></section><section className="mt-7 grid gap-6 xl:grid-cols-[1.35fr_1fr]"><Card className="rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-[0_8px_28px_rgba(25,45,90,0.05)] transition-all duration-300 hover:shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 border-b border-[#eef1f6] dark:border-zinc-800 px-6 py-5"><div><CardTitle className="text-base font-semibold">Projetos em andamento</CardTitle><p className="mt-1 text-xs text-[#96a0b2] dark:text-zinc-400">Acompanhe a saúde da sua carteira</p></div><Button variant="ghost" onClick={() => setActive("commercial")} className="gap-1 rounded-lg text-xs font-semibold text-zinc-800 dark:text-zinc-100 transition-transform hover:translate-x-1">Ver todos <ChevronRight className="h-3.5 w-3.5" /></Button></CardHeader><CardContent className="p-0">{projects.map(project => <div key={project.code} className="flex flex-col gap-3 border-b border-[#f0f2f6] dark:border-zinc-800 px-6 py-4 last:border-0 sm:flex-row sm:items-center group hover:bg-[#fbfcfe] dark:bg-zinc-800/50 transition-colors"><div className="flex min-w-0 flex-1 items-center gap-3"><div className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl transition-transform duration-300 group-hover:scale-105 ${project.tone === "blue" ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100" : project.tone === "violet" ? "bg-violet-50 text-violet-600" : "bg-emerald-50 text-emerald-600"}`}><BriefcaseBusiness className="h-4 w-4" /></div><div className="min-w-0"><div className="flex items-center gap-2"><span className="text-[10px] font-bold text-[#8a95aa]">{project.code}</span><span className="h-1 w-1 rounded-full bg-[#dce1eb]" /><p className="truncate text-sm font-semibold text-[#273249] dark:text-zinc-50">{project.name}</p></div><p className="mt-0.5 truncate text-xs text-[#9aa3b5] dark:text-zinc-400">{project.client}</p></div></div><div className="flex w-full items-center gap-4 sm:w-[240px]"><div className="flex-1"><div className="mb-1.5 flex justify-between text-[10px] font-medium"><span className="text-[#8290a5]">{project.status}</span><span className="text-[#273249] dark:text-zinc-50">{project.progress}%</span></div><Progress value={project.progress} className="h-1.5 bg-[#edf0f6] dark:bg-zinc-800" /></div><div className="hidden text-right sm:block"><p className="text-xs font-semibold text-[#273249] dark:text-zinc-50">{project.value}</p><p className="mt-0.5 text-[10px] text-emerald-600">{project.margin} margem</p></div></div></div>)}</CardContent></Card><Card className="relative overflow-hidden rounded-2xl border-0 bg-[#172033] text-white shadow-[0_8px_28px_rgba(25,45,90,0.14)] transition-all duration-300 hover:shadow-xl"><div className="absolute -right-20 -top-20 h-40 w-40 rounded-full bg-white dark:bg-zinc-900/5 blur-3xl pointer-events-none" /><CardHeader className="px-6 pb-0 pt-5 relative z-10"><CardTitle className="text-base font-semibold">Distribuição da carteira</CardTitle><p className="mt-1 text-xs text-white/45">Projetos por etapa operacional</p></CardHeader><CardContent className="flex items-center gap-5 px-4 py-5 relative z-10"><div className="h-[180px] w-[180px] shrink-0 transition-transform duration-500 hover:scale-105"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={stageData} dataKey="value" nameKey="name" innerRadius={54} outerRadius={75} paddingAngle={4} stroke="none">{stageData.map(entry => <Cell key={entry.name} fill={entry.color} className="transition-all hover:opacity-80" />)}</Pie><Tooltip contentStyle={{ border: "0", borderRadius: "12px", color: "#172033", fontSize: 12, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }} /></PieChart></ResponsiveContainer></div><div className="min-w-0 flex-1 space-y-3">{stageData.map(item => <div key={item.name} className="group flex items-center justify-between text-xs transition-colors hover:bg-white dark:bg-zinc-900/5 rounded-md p-1 -ml-1"><span className="flex items-center gap-2 text-white/60 group-hover:text-white/80"><span className="h-2 w-2 rounded-full transition-transform group-hover:scale-125" style={{ background: item.color }} />{item.name}</span><strong className="font-semibold text-white">{item.value}%</strong></div>)}<div className="mt-4 border-t border-white/10 pt-3"><p className="text-[11px] leading-relaxed text-white/45">A carteira mantém um equilíbrio saudável entre produção e relacionamento.</p></div></div></CardContent></Card></section></>;
 }
 
-function ModulePlaceholder({ active, onBack }: { active: string; onBack: () => void }) {
+function ModulePlaceholder({ active, onBack, onOpenForm }: { active: string; onBack: () => void; onOpenForm: () => void }) {
   const item = modules.find(module => module.id === active) ?? modules[0]; const Icon = item.icon;
   const clientsQuery = trpc.clients.list.useQuery(undefined, { retry: false });
   const proposalsQuery = trpc.proposals.list.useQuery(undefined, { retry: false });
@@ -290,10 +297,98 @@ function ModulePlaceholder({ active, onBack }: { active: string; onBack: () => v
   
   if (isLoading) return <ModuleSkeleton label={item.label} onBack={onBack} />;
 
-  return <div className="space-y-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100"><Icon className="h-5 w-5" /></div><div><h2 className="text-2xl font-semibold tracking-tight">{item.label}</h2><p className="mt-1 text-sm text-[#8792a8] dark:text-zinc-400">{data.intro}</p></div></div></div><div className="flex gap-2"><Button variant="outline" onClick={onBack} className="rounded-xl border-zinc-300 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800">Voltar</Button><Button onClick={() => alert(`Novo registro em: ${item.label}`)} className="gap-2 rounded-xl bg-zinc-900 hover:bg-zinc-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white"><Plus className="h-4 w-4" /> Novo registro</Button></div></div><div className="grid gap-4 sm:grid-cols-3">{data.stats.map(([label, value]) => <Card key={label} className="rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-soft"><CardContent className="p-5"><p className="text-xs text-[#8792a8] dark:text-zinc-400">{label}</p><p className="mt-3 text-2xl font-semibold tracking-tight">{value}</p><p className="mt-2 text-[11px] font-medium text-emerald-600">Atualizado agora</p></CardContent></Card>)}</div><Card className="overflow-hidden rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-soft"><CardHeader className="flex flex-row items-center justify-between border-b border-[#eef1f6] dark:border-zinc-800 px-6 py-5"><div><CardTitle className="text-base">Acompanhamento operacional</CardTitle><p className="mt-1 text-xs text-[#96a0b2] dark:text-zinc-400">Registros mais recentes do módulo</p></div><Button variant="outline" size="sm" onClick={exportCsv} className="hidden rounded-lg sm:flex dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800">Exportar CSV</Button></CardHeader><CardContent className="p-0">{liveRows.map(([code, title, status]) => <div key={code} className="flex items-center gap-4 border-b border-[#f0f2f6] dark:border-zinc-800 px-6 py-4 last:border-0"><div className="grid h-9 w-9 place-items-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100"><FileText className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-wider text-[#97a1b2] dark:text-zinc-400">{code}</p><p className="truncate text-sm font-semibold text-[#273249] dark:text-zinc-50">{title}</p></div><Badge variant="outline" className={`rounded-full border-0 text-[11px] ${status.includes("atras") || status.includes("desvio") || status.includes("Repor") ? "bg-rose-50 text-rose-600" : status.includes("hoje") || status.includes("Pendente") ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}>{status}</Badge><ChevronRight className="h-4 w-4 text-[#c1c8d5]" /></div>)}</CardContent></Card></div>;
+  return <div className="space-y-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100"><Icon className="h-5 w-5" /></div><div><h2 className="text-2xl font-semibold tracking-tight">{item.label}</h2><p className="mt-1 text-sm text-[#8792a8] dark:text-zinc-400">{data.intro}</p></div></div></div><div className="flex gap-2"><Button variant="outline" onClick={onBack} className="rounded-xl border-zinc-300 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800">Voltar</Button><Button onClick={onOpenForm} className="gap-2 rounded-xl bg-zinc-900 hover:bg-zinc-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white"><Plus className="h-4 w-4" /> Novo registro</Button></div></div><div className="grid gap-4 sm:grid-cols-3">{data.stats.map(([label, value]) => <Card key={label} className="rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-soft"><CardContent className="p-5"><p className="text-xs text-[#8792a8] dark:text-zinc-400">{label}</p><p className="mt-3 text-2xl font-semibold tracking-tight">{value}</p><p className="mt-2 text-[11px] font-medium text-emerald-600">Atualizado agora</p></CardContent></Card>)}</div><Card className="overflow-hidden rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-soft"><CardHeader className="flex flex-row items-center justify-between border-b border-[#eef1f6] dark:border-zinc-800 px-6 py-5"><div><CardTitle className="text-base">Acompanhamento operacional</CardTitle><p className="mt-1 text-xs text-[#96a0b2] dark:text-zinc-400">Registros mais recentes do módulo</p></div><Button variant="outline" size="sm" onClick={exportCsv} className="hidden rounded-lg sm:flex dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800">Exportar CSV</Button></CardHeader><CardContent className="p-0">{liveRows.map(([code, title, status]) => <div key={code} className="flex items-center gap-4 border-b border-[#f0f2f6] dark:border-zinc-800 px-6 py-4 last:border-0"><div className="grid h-9 w-9 place-items-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100"><FileText className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-wider text-[#97a1b2] dark:text-zinc-400">{code}</p><p className="truncate text-sm font-semibold text-[#273249] dark:text-zinc-50">{title}</p></div><Badge variant="outline" className={`rounded-full border-0 text-[11px] ${status.includes("atras") || status.includes("desvio") || status.includes("Repor") ? "bg-rose-50 text-rose-600" : status.includes("hoje") || status.includes("Pendente") ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}>{status}</Badge><ChevronRight className="h-4 w-4 text-[#c1c8d5]" /></div>)}</CardContent></Card></div>;
 }
 
 function ModuleSkeleton({ label, onBack }: { label: string; onBack: () => void }) {
   return <div className="space-y-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><div className="flex items-center gap-3"><Skeleton className="h-11 w-11 rounded-xl" /><div><h2 className="text-2xl font-semibold tracking-tight">{label}</h2><Skeleton className="mt-2 h-4 w-64" /></div></div></div><div className="flex gap-2"><Button variant="outline" onClick={onBack} className="rounded-xl">Voltar</Button><Skeleton className="h-10 w-32 rounded-xl" /></div></div><div className="grid gap-4 sm:grid-cols-3">{[1, 2, 3].map(i => <Card key={i} className="rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-soft"><CardContent className="p-5"><Skeleton className="h-3 w-24" /><Skeleton className="mt-3 h-8 w-16" /><Skeleton className="mt-2 h-3 w-20" /></CardContent></Card>)}</div><Card className="overflow-hidden rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-soft"><CardHeader className="flex flex-row items-center justify-between border-b border-[#eef1f6] dark:border-zinc-800 px-6 py-5"><div><Skeleton className="h-5 w-48" /><Skeleton className="mt-2 h-3 w-64" /></div><Skeleton className="h-8 w-24 rounded-lg hidden sm:block" /></CardHeader><CardContent className="p-0">{[1, 2, 3, 4, 5].map(i => <div key={i} className="flex items-center gap-4 border-b border-[#f0f2f6] dark:border-zinc-800 px-6 py-4 last:border-0"><Skeleton className="h-9 w-9 rounded-xl shrink-0" /><div className="min-w-0 flex-1 space-y-2"><Skeleton className="h-3 w-16" /><Skeleton className="h-4 w-48" /></div><Skeleton className="h-6 w-20 rounded-full" /></div>)}</CardContent></Card></div>;
+}
+
+function RecordFormSheet({ open, onOpenChange, activeModule }: { open: boolean; onOpenChange: (open: boolean) => void; activeModule: string }) {
+  const [submitting, setSubmitting] = useState(false);
+  const item = modules.find(m => m.id === activeModule) ?? modules[0];
+  
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    // Simula salvamento
+    setTimeout(() => {
+      setSubmitting(false);
+      onOpenChange(false);
+      alert("Sucesso! Registro salvo com sucesso.");
+    }, 1000);
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-md bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 p-0 flex flex-col">
+        <SheetHeader className="p-6 border-b border-zinc-100 dark:border-zinc-900">
+          <SheetTitle className="text-xl flex items-center gap-2 text-zinc-900 dark:text-zinc-50">
+            <Plus className="h-5 w-5 text-emerald-500" />
+            Novo registro em {item.label}
+          </SheetTitle>
+          <SheetDescription className="text-zinc-500 dark:text-zinc-400">
+            Preencha os dados abaixo para cadastrar um novo item no sistema.
+          </SheetDescription>
+        </SheetHeader>
+        
+        <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            {activeModule === "commercial" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="title" className="text-zinc-700 dark:text-zinc-300">Título da Proposta</Label>
+                  <Input id="title" placeholder="Ex: Modernização de Fachada" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="client" className="text-zinc-700 dark:text-zinc-300">Cliente</Label>
+                  <Input id="client" placeholder="Nome da empresa" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="value" className="text-zinc-700 dark:text-zinc-300">Valor Estimado (R$)</Label>
+                  <Input id="value" type="number" placeholder="0,00" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+              </>
+            )}
+            
+            {activeModule === "production" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="order" className="text-zinc-700 dark:text-zinc-300">Descrição da Ordem</Label>
+                  <Input id="order" placeholder="O que será produzido?" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="deadline" className="text-zinc-700 dark:text-zinc-300">Prazo de Entrega</Label>
+                  <Input id="deadline" type="date" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+              </>
+            )}
+
+            {activeModule !== "commercial" && activeModule !== "production" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="text-zinc-700 dark:text-zinc-300">Nome do Registro</Label>
+                  <Input id="name" placeholder="Digite o nome..." required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="desc" className="text-zinc-700 dark:text-zinc-300">Observações</Label>
+                  <Textarea id="desc" placeholder="Detalhes adicionais..." className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 min-h-[120px]" />
+                </div>
+              </>
+            )}
+          </div>
+          
+          <div className="p-6 border-t border-zinc-100 dark:border-zinc-900 flex justify-end gap-3 bg-zinc-50 dark:bg-zinc-900/30">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting} className="border-zinc-300 dark:border-zinc-700 h-11 px-6">
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={submitting} className="bg-emerald-500 hover:bg-emerald-600 text-white h-11 px-6">
+              {submitting ? "Salvando..." : "Salvar Registro"}
+            </Button>
+          </div>
+        </form>
+      </SheetContent>
+    </Sheet>
+  );
 }
 
