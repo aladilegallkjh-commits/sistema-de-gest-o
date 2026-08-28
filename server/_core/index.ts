@@ -1,3 +1,9 @@
+// Polyfill globalThis.crypto for Node.js 18 (Railway uses Node 18 by default).
+// Node 19+ exposes Web Crypto globally, but 18 does not, causing "crypto is not defined".
+import { webcrypto } from "node:crypto";
+// @ts-ignore
+if (!globalThis.crypto) globalThis.crypto = webcrypto;
+
 import "dotenv/config";
 import express from "express";
 import { createServer } from "http";
