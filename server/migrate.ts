@@ -217,6 +217,15 @@ async function runMigrations() {
       \`auth\` varchar(255) NOT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS \`appNotifications\` (
+      \`id\` int AUTO_INCREMENT PRIMARY KEY,
+      \`userId\` int NOT NULL,
+      \`title\` varchar(180) NOT NULL,
+      \`message\` text NOT NULL,
+      \`moduleId\` varchar(60),
+      \`isRead\` boolean NOT NULL DEFAULT false,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`
   ];
 
   for (const sql of tables) {

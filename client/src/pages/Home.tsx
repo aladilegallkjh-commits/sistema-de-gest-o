@@ -103,18 +103,41 @@ export default function Home() {
   const projectsQuery = trpc.projects.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const productionQuery = trpc.production.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
   const clientsQuery = trpc.clients.list.useQuery(undefined, { enabled: isAuthenticated, retry: false });
+  const notificationsQuery = trpc.notifications.list.useQuery(undefined, { enabled: isAuthenticated, retry: false, refetchInterval: 15000 });
+  const markAsReadMut = trpc.notifications.markAsRead.useMutation({
+    onSuccess: () => notificationsQuery.refetch()
+  });
   const isLoading = summaryQuery.isLoading || reportsQuery.isLoading || projectsQuery.isLoading;
   const summary = summaryQuery.data ?? { projects: 0, proposals: 0, orders: 0, clients: 0, stockAlerts: 0, overdueOrders: 0, budgetAlerts: 0, postSaleToday: 0 };
   const reports = reportsQuery.data ?? { sold: 0, planned: 0, actual: 0, margin: 0, suppliersAtRisk: 0 };
   const currentModule = visibleModules.find(item => item.id === active) ?? visibleModules[0];
   const greeting = user?.name?.split(" ")[0] ?? "Usuário";
-  const totalAlerts = (summary.overdueOrders ?? 0) + (summary.budgetAlerts ?? 0) + (summary.stockAlerts ?? 0) + (summary.postSaleToday ?? 0);
-  const notifItems = [
+  
+  const systemAlerts = [
     ...(summary.overdueOrders > 0 ? [{ tone: "rose", icon: Clock3, title: `${summary.overdueOrders} ordem(ns) atrasada(s)`, sub: "Verifique as ordens de produção" }] : []),
     ...(summary.budgetAlerts > 0 ? [{ tone: "amber", icon: CircleDollarSign, title: `${summary.budgetAlerts} projeto acima do orçamento`, sub: "Analise os custos do projeto" }] : []),
     ...(summary.stockAlerts > 0 ? [{ tone: "cyan", icon: PackageCheck, title: `${summary.stockAlerts} itens abaixo do mínimo`, sub: "Reposição de estoque necessária" }] : []),
     ...(summary.postSaleToday > 0 ? [{ tone: "emerald", icon: UsersRound, title: `${summary.postSaleToday} contatos de pós-venda hoje`, sub: "Acompanhe o relacionamento" }] : []),
   ];
+
+  const dbNotifs = notificationsQuery.data || [];
+  const unreadNotifs = dbNotifs.filter(n => !n.isRead);
+  const totalAlerts = systemAlerts.length + unreadNotifs.length;
+  
+  const notifItems = [
+    ...systemAlerts,
+    ...dbNotifs.map(n => ({ 
+      id: n.id, 
+      isDbNotif: true,
+      tone: "blue", 
+      icon: Bell, 
+      title: n.title, 
+      sub: n.message,
+      isRead: n.isRead,
+      moduleId: n.moduleId
+    }))
+  ];
+
   const visibleProjects = useMemo(() => projectsQuery.data?.slice(0, 3).map((project, index) => ({ code: project.code, name: project.name, client: `Cliente #${project.clientId}`, status: project.status === "in_progress" ? "Em produção" : project.status === "post_sale" ? "Pós-venda" : "Planejamento", progress: project.status === "delivered" ? 100 : project.status === "in_progress" ? 68 : 38, value: money(Number(project.soldValue ?? 0)), margin: Number(project.soldValue ?? 0) ? `${(((Number(project.soldValue ?? 0) - Number(project.actualCost ?? 0)) / Number(project.soldValue ?? 0)) * 100).toFixed(1).replace(".", ",")}%` : "0%", tone: ["blue", "violet", "emerald"][index % 3] })) ?? demoProjects, [projectsQuery.data]);
   // data dinâmica
   const todayLabel = useMemo(() => {
@@ -241,13 +264,21 @@ export default function Home() {
               </div>
             ) : notifItems.map((n, i) => {
               const Icon = n.icon;
-              return <button key={i} onClick={() => { setNotifOpen(false); setActive(n.tone === "rose" ? "production" : n.tone === "amber" ? "costs" : n.tone === "cyan" ? "stock" : "post-sale"); }} className="flex w-full items-center gap-4 border-b border-zinc-100 dark:border-zinc-800 px-6 py-4 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors">
-                <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${n.tone === "rose" ? "bg-rose-50 text-rose-500" : n.tone === "amber" ? "bg-amber-50 text-amber-500" : n.tone === "cyan" ? "bg-cyan-50 text-cyan-600" : "bg-emerald-50 text-emerald-600"}`}>
+              return <button key={i} onClick={() => { 
+                setNotifOpen(false); 
+                if (n.isDbNotif && markAsReadMut) {
+                  markAsReadMut.mutate({ id: n.id });
+                  if (n.moduleId) setActive(n.moduleId);
+                } else {
+                  setActive(n.tone === "rose" ? "production" : n.tone === "amber" ? "costs" : n.tone === "cyan" ? "stock" : "post-sale");
+                }
+              }} className={`flex w-full items-center gap-4 border-b border-zinc-100 dark:border-zinc-800 px-6 py-4 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors ${n.isDbNotif && !n.isRead ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}>
+                <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${n.tone === "rose" ? "bg-rose-50 text-rose-500" : n.tone === "amber" ? "bg-amber-50 text-amber-500" : n.tone === "cyan" ? "bg-cyan-50 text-cyan-600" : n.tone === "blue" ? "bg-blue-50 text-blue-500" : "bg-emerald-50 text-emerald-600"}`}>
                   <Icon className="h-[18px] w-[18px]" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{n.title}</p>
-                  <p className="truncate text-xs text-zinc-400 mt-0.5">{n.sub}</p>
+                  <p className={`truncate text-sm ${n.isDbNotif && !n.isRead ? 'font-bold' : 'font-medium'}`}>{n.title}</p>
+                  <p className={`truncate text-xs ${n.isDbNotif && !n.isRead ? 'text-zinc-600 dark:text-zinc-300' : 'text-zinc-400'} mt-0.5`}>{n.sub}</p>
                 </div>
                 <ChevronRight className="h-4 w-4 text-zinc-300 shrink-0" />
               </button>;
@@ -323,14 +354,23 @@ function ModulePlaceholder({ active, onBack, onOpenForm, onOpenChat }: { active:
     reports: { intro: "Relatórios gerenciais para transformar operação em decisão.", stats: [["Produtividade", "—"], ["Giro de estoque", "—"], ["Projetos no prazo", "—"]], rows: [] },
   };
   const data = content[active] ?? content.commercial;
-  const liveRows: [string, string, string, string?][] = active === "commercial" && proposalsQuery.data?.length ? proposalsQuery.data.slice(0, 8).map(proposal => [proposal.code, proposal.title, proposal.status, new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(proposal.totalValue))]) : active === "production" && productionQuery.data?.length ? productionQuery.data.slice(0, 8).map(order => [order.code, order.title, order.status]) : active === "stock" && stockQuery.data?.length ? stockQuery.data.slice(0, 8).map(item => [item.sku, item.name, Number(item.quantity) <= Number(item.minimumQuantity) ? "Repor" : "Disponível", `${item.quantity} ${item.unit}`]) : active === "suppliers" && suppliersQuery.data?.length ? suppliersQuery.data.slice(0, 8).map(supplier => [`SUP-${supplier.id}`, supplier.name, supplier.deliveryStatus]) : active === "post-sale" && postSaleQuery.data?.length ? postSaleQuery.data.slice(0, 8).map(entry => [`PS-${entry.id}`, `Projeto #${entry.projectId}`, entry.stage]) : data.rows;
-  const exportCsv = () => { const csv = [["Código", "Registro", "Status", "Detalhe"], ...liveRows].map(row => row.map(cell => cell ? `"${cell.replaceAll('"', '""')}"` : '""').join(",")).join("\n"); const blob = new Blob([csv], { type: "text/csv;charset=utf-8" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `${active}-relatorio.csv`; link.click(); URL.revokeObjectURL(url); };
+  const liveRows: [number, string, string, string, string?][] = active === "commercial" && proposalsQuery.data?.length ? proposalsQuery.data.slice(0, 8).map(proposal => [proposal.id, proposal.code, proposal.title, proposal.status, new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(proposal.totalValue))]) : active === "production" && productionQuery.data?.length ? productionQuery.data.slice(0, 8).map(order => [order.id, order.code, order.title, order.status]) : active === "stock" && stockQuery.data?.length ? stockQuery.data.slice(0, 8).map(item => [item.id, item.sku, item.name, Number(item.quantity) <= Number(item.minimumQuantity) ? "Repor" : "Disponível", `${item.quantity} ${item.unit}`]) : active === "suppliers" && suppliersQuery.data?.length ? suppliersQuery.data.slice(0, 8).map(supplier => [supplier.id, `SUP-${supplier.id}`, supplier.name, supplier.deliveryStatus]) : active === "post-sale" && postSaleQuery.data?.length ? postSaleQuery.data.slice(0, 8).map(entry => [entry.id, `PS-${entry.id}`, `Projeto #${entry.projectId}`, entry.stage]) : data.rows.map(r => [0, r[0], r[1], r[2], r[3]]);
+  const exportCsv = () => { const csv = [["Código", "Registro", "Status", "Detalhe"], ...liveRows].map(row => row.slice(1).map(cell => cell ? `"${String(cell).replaceAll('"', '""')}"` : '""').join(",")).join("\n"); const blob = new Blob([csv], { type: "text/csv;charset=utf-8" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `${active}-relatorio.csv`; link.click(); URL.revokeObjectURL(url); };
   
   const printPdf = () => { window.print(); };
 
+  const [selectedRecord, setSelectedRecord] = useState<{ id: number, code: string, title: string, status: string, detail?: string } | null>(null);
+
   if (isLoading) return <ModuleSkeleton label={item.label} onBack={onBack} />;
 
-  return <div className="space-y-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100"><Icon className="h-5 w-5" /></div><div><h2 className="text-2xl font-semibold tracking-tight">{item.label}</h2><p className="mt-1 text-sm text-[#8792a8] dark:text-zinc-400">{data.intro}</p></div></div></div><div className="flex flex-wrap gap-2 print:hidden"><Button variant="outline" onClick={onOpenChat} className="rounded-xl border-zinc-300 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 gap-2"><MessageSquare className="h-4 w-4" /> Chat da equipe</Button><Button variant="outline" onClick={printPdf} className="rounded-xl border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-900/50 gap-2"><Download className="h-4 w-4" /> Baixar PDF</Button><Button variant="outline" onClick={onBack} className="rounded-xl border-zinc-300 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800">Voltar</Button><Button onClick={onOpenForm} className="gap-2 rounded-xl bg-zinc-900 hover:bg-zinc-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white"><Plus className="h-4 w-4" /> Novo registro</Button></div></div><div className="grid gap-4 sm:grid-cols-3">{data.stats.map(([label, value]) => <Card key={label} className="rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-soft"><CardContent className="p-5"><p className="text-xs text-[#8792a8] dark:text-zinc-400">{label}</p><p className="mt-3 text-2xl font-semibold tracking-tight">{value}</p><p className="mt-2 text-[11px] font-medium text-emerald-600">Atualizado agora</p></CardContent></Card>)}</div><Card className="overflow-hidden rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-soft"><CardHeader className="flex flex-row items-center justify-between border-b border-[#eef1f6] dark:border-zinc-800 px-6 py-5"><div><CardTitle className="text-base">Acompanhamento operacional</CardTitle><p className="mt-1 text-xs text-[#96a0b2] dark:text-zinc-400">Registros mais recentes do módulo</p></div><Button variant="outline" size="sm" onClick={exportCsv} className="hidden rounded-lg sm:flex dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800 print:hidden">Exportar CSV</Button></CardHeader><CardContent className="p-0">{liveRows.length === 0 ? <div className="flex flex-col items-center justify-center py-16 text-zinc-400 dark:text-zinc-600 space-y-2"><FileText className="h-10 w-10 opacity-20" /><p className="text-sm">Nenhum registro encontrado.</p><p className="text-xs">Clique em "Novo registro" para começar.</p></div> : liveRows.map(([code, title, status, detail]) => <button key={code} onClick={() => { import('sonner').then(m => m.toast.info(`Detalhes do registro`, { description: `${code}: ${title} - ${status} ${detail ? ' | ' + detail : ''}` })); }} className="flex w-full items-center gap-4 border-b border-[#f0f2f6] dark:border-zinc-800 px-6 py-4 last:border-0 hover:bg-[#fbfcfe] dark:hover:bg-zinc-800/50 transition-colors text-left"><div className="grid h-9 w-9 place-items-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100"><FileText className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-wider text-[#97a1b2] dark:text-zinc-400">{code}</p><div className="flex items-center gap-2"><p className="truncate text-sm font-semibold text-[#273249] dark:text-zinc-50">{title}</p>{detail && <span className="text-[11px] text-zinc-500 font-medium bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-sm">{detail}</span>}</div></div><Badge variant="outline" className={`rounded-full border-0 text-[11px] ${status.includes("atras") || status.includes("desvio") || status.includes("Repor") ? "bg-rose-50 text-rose-600" : status.includes("hoje") || status.includes("Pendente") ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}>{status}</Badge><ChevronRight className="h-4 w-4 text-[#c1c8d5] print:hidden" /></button>)}</CardContent></Card></div>;
+  return <div className="space-y-6"><div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center"><div><div className="flex items-center gap-3"><div className="grid h-11 w-11 place-items-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100"><Icon className="h-5 w-5" /></div><div><h2 className="text-2xl font-semibold tracking-tight">{item.label}</h2><p className="mt-1 text-sm text-[#8792a8] dark:text-zinc-400">{data.intro}</p></div></div></div><div className="flex flex-wrap gap-2 print:hidden"><Button variant="outline" onClick={onOpenChat} className="rounded-xl border-zinc-300 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 gap-2"><MessageSquare className="h-4 w-4" /> Chat da equipe</Button><Button variant="outline" onClick={printPdf} className="rounded-xl border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400 dark:hover:bg-emerald-900/50 gap-2"><Download className="h-4 w-4" /> Baixar PDF</Button><Button variant="outline" onClick={onBack} className="rounded-xl border-zinc-300 dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800">Voltar</Button><Button onClick={onOpenForm} className="gap-2 rounded-xl bg-zinc-900 hover:bg-zinc-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 text-white"><Plus className="h-4 w-4" /> Novo registro</Button></div></div><div className="grid gap-4 sm:grid-cols-3">{data.stats.map(([label, value]) => <Card key={label} className="rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-soft"><CardContent className="p-5"><p className="text-xs text-[#8792a8] dark:text-zinc-400">{label}</p><p className="mt-3 text-2xl font-semibold tracking-tight">{value}</p><p className="mt-2 text-[11px] font-medium text-emerald-600">Atualizado agora</p></CardContent></Card>)}</div><Card className="overflow-hidden rounded-2xl border-0 bg-white dark:bg-zinc-900 shadow-soft"><CardHeader className="flex flex-row items-center justify-between border-b border-[#eef1f6] dark:border-zinc-800 px-6 py-5"><div><CardTitle className="text-base">Acompanhamento operacional</CardTitle><p className="mt-1 text-xs text-[#96a0b2] dark:text-zinc-400">Registros mais recentes do módulo</p></div><Button variant="outline" size="sm" onClick={exportCsv} className="hidden rounded-lg sm:flex dark:border-zinc-700 dark:text-zinc-100 dark:hover:bg-zinc-800 print:hidden">Exportar CSV</Button></CardHeader><CardContent className="p-0">{liveRows.length === 0 ? <div className="flex flex-col items-center justify-center py-16 text-zinc-400 dark:text-zinc-600 space-y-2"><FileText className="h-10 w-10 opacity-20" /><p className="text-sm">Nenhum registro encontrado.</p><p className="text-xs">Clique em "Novo registro" para começar.</p></div> : liveRows.map(([id, code, title, status, detail]) => <button key={code} onClick={() => setSelectedRecord({ id, code, title, status, detail })} className="flex w-full items-center gap-4 border-b border-[#f0f2f6] dark:border-zinc-800 px-6 py-4 last:border-0 hover:bg-[#fbfcfe] dark:hover:bg-zinc-800/50 transition-colors text-left"><div className="grid h-9 w-9 place-items-center rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-100"><FileText className="h-4 w-4" /></div><div className="min-w-0 flex-1"><p className="text-[10px] font-bold uppercase tracking-wider text-[#97a1b2] dark:text-zinc-400">{code}</p><div className="flex items-center gap-2"><p className="truncate text-sm font-semibold text-[#273249] dark:text-zinc-50">{title}</p>{detail && <span className="text-[11px] text-zinc-500 font-medium bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 rounded-sm">{detail}</span>}</div></div><Badge variant="outline" className={`rounded-full border-0 text-[11px] ${status.includes("atras") || status.includes("desvio") || status.includes("Repor") ? "bg-rose-50 text-rose-600" : status.includes("hoje") || status.includes("Pendente") ? "bg-amber-50 text-amber-600" : "bg-emerald-50 text-emerald-600"}`}>{status}</Badge><ChevronRight className="h-4 w-4 text-[#c1c8d5] print:hidden" /></button>)}</CardContent></Card>
+  
+  {selectedRecord && <RecordActionsSheet 
+    record={selectedRecord} 
+    activeModule={active} 
+    onClose={() => setSelectedRecord(null)} 
+  />}
+  </div>;
 }
 
 function ModuleSkeleton({ label, onBack }: { label: string; onBack: () => void }) {
@@ -558,3 +598,82 @@ function RecordFormSheet({ open, onOpenChange, activeModule }: { open: boolean; 
   );
 }
 
+function RecordActionsSheet({ record, activeModule, onClose }: { record: { id: number, code: string, title: string, status: string, detail?: string }; activeModule: string; onClose: () => void }) {
+  const utils = trpc.useUtils();
+  const deleteClient = trpc.clients.delete.useMutation({ onSuccess: () => { utils.clients.list.invalidate(); onClose(); } });
+  const deleteProposal = trpc.proposals.delete.useMutation({ onSuccess: () => { utils.proposals.list.invalidate(); onClose(); } });
+  const deleteProject = trpc.projects.delete.useMutation({ onSuccess: () => { utils.projects.list.invalidate(); utils.dashboard.summary.invalidate(); onClose(); } });
+  const deleteProduction = trpc.production.delete.useMutation({ onSuccess: () => { utils.production.list.invalidate(); onClose(); } });
+  const deleteStock = trpc.stock.delete.useMutation({ onSuccess: () => { utils.stock.list.invalidate(); onClose(); } });
+  const deleteSupplier = trpc.suppliers.delete.useMutation({ onSuccess: () => { utils.suppliers.list.invalidate(); onClose(); } });
+  
+  const approveProposal = trpc.proposals.approve.useMutation();
+  const convertToProject = trpc.proposals.convertToProject.useMutation({
+    onSuccess: () => {
+      utils.proposals.list.invalidate();
+      utils.projects.list.invalidate();
+      utils.dashboard.summary.invalidate();
+      import('sonner').then(m => m.toast.success("Proposta convertida em Projeto!"));
+      onClose();
+    }
+  });
+
+  const handleDelete = () => {
+    if (!confirm("Tem certeza que deseja apagar este registro?")) return;
+    if (activeModule === "commercial") {
+      if (record.code.startsWith("PRJ")) deleteProject.mutate({ id: record.id });
+      else deleteProposal.mutate({ id: record.id });
+    } else if (activeModule === "production") {
+      deleteProduction.mutate({ id: record.id });
+    } else if (activeModule === "stock") {
+      deleteStock.mutate({ id: record.id });
+    } else if (activeModule === "suppliers") {
+      deleteSupplier.mutate({ id: record.id });
+    } else {
+      import('sonner').then(m => m.toast.error("Exclusão não suportada neste módulo."));
+    }
+  };
+
+  const handleApprove = async () => {
+    try {
+      await approveProposal.mutateAsync({ id: record.id });
+      await convertToProject.mutateAsync({ id: record.id });
+    } catch (e: any) {
+      import('sonner').then(m => m.toast.error("Erro ao converter", { description: e.message }));
+    }
+  };
+
+  return (
+    <Sheet open={true} onOpenChange={(open) => !open && onClose()}>
+      <SheetContent side="right" className="w-[400px] sm:w-[540px] overflow-y-auto flex flex-col p-0 dark:bg-zinc-950 border-l dark:border-zinc-800">
+        <SheetHeader className="p-6 border-b border-zinc-100 dark:border-zinc-900 bg-white dark:bg-zinc-900/50 sticky top-0 z-10">
+          <SheetTitle>Detalhes do Registro</SheetTitle>
+          <SheetDescription>Ações e informações detalhadas.</SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 p-6 space-y-4">
+          <div className="flex justify-between items-center bg-zinc-50 dark:bg-zinc-800/50 p-4 rounded-xl">
+            <div>
+              <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">{record.code}</p>
+              <p className="font-semibold">{record.title}</p>
+            </div>
+            <Badge variant="outline" className="bg-white dark:bg-zinc-900">{record.status}</Badge>
+          </div>
+          {record.detail && <p className="text-sm text-zinc-600 dark:text-zinc-300">Detalhe: {record.detail}</p>}
+        </div>
+        <div className="p-6 border-t border-zinc-100 dark:border-zinc-900 flex flex-col gap-3 bg-zinc-50 dark:bg-zinc-900/30 sticky bottom-0">
+          {activeModule === "commercial" && record.code.startsWith("PRP") && record.status !== "approved" && (
+            <Button onClick={handleApprove} disabled={approveProposal.isPending || convertToProject.isPending} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-11">
+              Aprovar & Gerar Projeto
+            </Button>
+          )}
+          <Button onClick={handleDelete} variant="destructive" className="w-full h-11">
+            Apagar Registro
+          </Button>
+          <Button variant="outline" onClick={onClose} className="w-full h-11">
+            Fechar
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}

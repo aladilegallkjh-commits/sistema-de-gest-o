@@ -1,7 +1,7 @@
 import webpush from 'web-push';
 import { getDb } from './db';
 import { eq } from 'drizzle-orm';
-import { pushSubscriptions, users } from '../drizzle/schema';
+import { pushSubscriptions, users, appNotifications } from '../drizzle/schema';
 
 // Setup VAPID keys
 webpush.setVapidDetails(
@@ -11,14 +11,29 @@ webpush.setVapidDetails(
 );
 
 export async function sendNotificationToUser(userId: number, title: string, body: string, url?: string) {
-  if (!process.env.VAPID_PUBLIC_KEY) return; // Skip if push is not configured
-
   const db = await getDb();
   if (!db) return;
 
   try {
+    const moduleMatch = url?.match(/module=([^&]+)/);
+    const moduleId = moduleMatch ? moduleMatch[1] : null;
+
+    try {
+      await db.insert(appNotifications).values({
+        userId,
+        title,
+        message: body,
+        moduleId: moduleId || "dashboard",
+        isRead: false
+      });
+    } catch (e) {
+      console.error('Error inserting appNotification', e);
+    }
+
     const subscriptions = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
     if (subscriptions.length === 0) return;
+
+    if (!process.env.VAPID_PUBLIC_KEY) return; // Skip if push is not configured
 
     const payload = JSON.stringify({ title, body, url: url || '/' });
 

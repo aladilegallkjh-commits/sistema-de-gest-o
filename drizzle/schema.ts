@@ -1,4 +1,4 @@
-import { decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, int, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 export const appRoles = ["admin", "gestor", "comercial", "producao", "compras", "pos_venda"] as const;
 
@@ -210,6 +210,16 @@ export const moduleChats = mysqlTable("moduleChats", {
   moduleId: varchar("moduleId", { length: 60 }).notNull(),
   userId: int("userId").notNull(),
   content: text("content").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const appNotifications = mysqlTable("appNotifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(), // User who receives the notification
+  title: varchar("title", { length: 180 }).notNull(),
+  message: text("message").notNull(),
+  moduleId: varchar("moduleId", { length: 60 }),
+  isRead: boolean("isRead").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
