@@ -311,22 +311,88 @@ function ModuleSkeleton({ label, onBack }: { label: string; onBack: () => void }
 }
 
 function RecordFormSheet({ open, onOpenChange, activeModule }: { open: boolean; onOpenChange: (open: boolean) => void; activeModule: string }) {
-  const [submitting, setSubmitting] = useState(false);
   const item = modules.find(m => m.id === activeModule) ?? modules[0];
-  
-  const handleSubmit = (e: React.FormEvent) => {
+  const utils = trpc.useUtils();
+
+  const [title, setTitle] = useState("");
+  const [clientName, setClientName] = useState("");
+  const [value, setValue] = useState("");
+  const [orderDesc, setOrderDesc] = useState("");
+  const [deadline, setDeadline] = useState("");
+  const [name, setName] = useState("");
+  const [notes, setNotes] = useState("");
+  const [sku, setSku] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [minQty, setMinQty] = useState("");
+  const [avgCost, setAvgCost] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const resetForm = useCallback(() => {
+    setTitle(""); setClientName(""); setValue(""); setOrderDesc(""); setDeadline("");
+    setName(""); setNotes(""); setSku(""); setQuantity(""); setMinQty(""); setAvgCost("");
+    setEmail(""); setPhone(""); setErrorMsg("");
+  }, []);
+
+  const refreshAll = useCallback(() => {
+    utils.clients.list.invalidate();
+    utils.proposals.list.invalidate();
+    utils.production.list.invalidate();
+    utils.stock.list.invalidate();
+    utils.suppliers.list.invalidate();
+    utils.dashboard.summary.invalidate();
+  }, [utils]);
+
+  const createClient = trpc.clients.create.useMutation({
+    onSuccess: () => { refreshAll(); resetForm(); onOpenChange(false); },
+    onError: (err) => setErrorMsg(err.message),
+  });
+  const createProposal = trpc.proposals.create.useMutation({
+    onSuccess: () => { refreshAll(); resetForm(); onOpenChange(false); },
+    onError: (err) => setErrorMsg(err.message),
+  });
+  const createOrder = trpc.production.create.useMutation({
+    onSuccess: () => { refreshAll(); resetForm(); onOpenChange(false); },
+    onError: (err) => setErrorMsg(err.message),
+  });
+  const createStock = trpc.stock.create.useMutation({
+    onSuccess: () => { refreshAll(); resetForm(); onOpenChange(false); },
+    onError: (err) => setErrorMsg(err.message),
+  });
+  const createSupplier = trpc.suppliers.create.useMutation({
+    onSuccess: () => { refreshAll(); resetForm(); onOpenChange(false); },
+    onError: (err) => setErrorMsg(err.message),
+  });
+
+  const isPending = createClient.isPending || createProposal.isPending || createOrder.isPending || createStock.isPending || createSupplier.isPending;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSubmitting(true);
-    // Simula salvamento
-    setTimeout(() => {
-      setSubmitting(false);
-      onOpenChange(false);
-      alert("Sucesso! Registro salvo com sucesso.");
-    }, 1000);
+    setErrorMsg("");
+    try {
+      if (activeModule === "commercial") {
+        const savedClient = await createClient.mutateAsync({ name: clientName || "Cliente" });
+        const allClients = await utils.clients.list.fetch();
+        const found = allClients?.find((c: any) => c.name === (clientName || "Cliente"));
+        const clientId = found?.id ?? 1;
+        await createProposal.mutateAsync({ clientId, title, totalValue: parseFloat(value) || 0 });
+      } else if (activeModule === "production") {
+        const allProjects = await utils.projects.list.fetch();
+        const projectId = allProjects?.[0]?.id ?? 1;
+        await createOrder.mutateAsync({ projectId, title: orderDesc, dueDate: deadline ? new Date(deadline) : undefined });
+      } else if (activeModule === "stock") {
+        await createStock.mutateAsync({ sku: sku || `SKU-${Date.now()}`, name, quantity: parseFloat(quantity) || 0, minimumQuantity: parseFloat(minQty) || 0, averageCost: parseFloat(avgCost) || 0 });
+      } else if (activeModule === "suppliers") {
+        await createSupplier.mutateAsync({ name, email, phone });
+      } else {
+        await createClient.mutateAsync({ name, email, phone, segment: notes });
+      }
+    } catch {}
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
       <SheetContent className="w-full sm:max-w-md bg-white dark:bg-zinc-950 border-l border-zinc-200 dark:border-zinc-800 p-0 flex flex-col">
         <SheetHeader className="p-6 border-b border-zinc-100 dark:border-zinc-900">
           <SheetTitle className="text-xl flex items-center gap-2 text-zinc-900 dark:text-zinc-50">
@@ -337,59 +403,113 @@ function RecordFormSheet({ open, onOpenChange, activeModule }: { open: boolean; 
             Preencha os dados abaixo para cadastrar um novo item no sistema.
           </SheetDescription>
         </SheetHeader>
-        
+
         <form onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden">
           <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            {errorMsg && (
+              <div className="rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 px-4 py-3 text-sm text-rose-600 dark:text-rose-400">
+                {errorMsg}
+              </div>
+            )}
+
             {activeModule === "commercial" && (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="title" className="text-zinc-700 dark:text-zinc-300">Título da Proposta</Label>
-                  <Input id="title" placeholder="Ex: Modernização de Fachada" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                  <Input id="title" value={title} onChange={e => setTitle(e.target.value)} placeholder="Ex: Modernização de Fachada" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="client" className="text-zinc-700 dark:text-zinc-300">Cliente</Label>
-                  <Input id="client" placeholder="Nome da empresa" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                  <Label htmlFor="client" className="text-zinc-700 dark:text-zinc-300">Nome do Cliente</Label>
+                  <Input id="client" value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Nome da empresa ou pessoa" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="value" className="text-zinc-700 dark:text-zinc-300">Valor Estimado (R$)</Label>
-                  <Input id="value" type="number" placeholder="0,00" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
-                </div>
-              </>
-            )}
-            
-            {activeModule === "production" && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="order" className="text-zinc-700 dark:text-zinc-300">Descrição da Ordem</Label>
-                  <Input id="order" placeholder="O que será produzido?" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="deadline" className="text-zinc-700 dark:text-zinc-300">Prazo de Entrega</Label>
-                  <Input id="deadline" type="date" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                  <Input id="value" type="number" value={value} onChange={e => setValue(e.target.value)} placeholder="0,00" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
                 </div>
               </>
             )}
 
-            {activeModule !== "commercial" && activeModule !== "production" && (
+            {activeModule === "production" && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-zinc-700 dark:text-zinc-300">Nome do Registro</Label>
-                  <Input id="name" placeholder="Digite o nome..." required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                  <Label htmlFor="order" className="text-zinc-700 dark:text-zinc-300">Descrição da Ordem</Label>
+                  <Input id="order" value={orderDesc} onChange={e => setOrderDesc(e.target.value)} placeholder="O que será produzido?" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="desc" className="text-zinc-700 dark:text-zinc-300">Observações</Label>
-                  <Textarea id="desc" placeholder="Detalhes adicionais..." className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 min-h-[120px]" />
+                  <Label htmlFor="deadline" className="text-zinc-700 dark:text-zinc-300">Prazo de Entrega</Label>
+                  <Input id="deadline" type="date" value={deadline} onChange={e => setDeadline(e.target.value)} className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+              </>
+            )}
+
+            {activeModule === "stock" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="sname" className="text-zinc-700 dark:text-zinc-300">Nome do Item</Label>
+                  <Input id="sname" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Chapa de Alumínio 3mm" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sku" className="text-zinc-700 dark:text-zinc-300">SKU / Código</Label>
+                  <Input id="sku" value={sku} onChange={e => setSku(e.target.value)} placeholder="Ex: ALU-3MM-001" className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="qty" className="text-zinc-700 dark:text-zinc-300">Quantidade</Label>
+                    <Input id="qty" type="number" value={quantity} onChange={e => setQuantity(e.target.value)} placeholder="0" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="minqty" className="text-zinc-700 dark:text-zinc-300">Qtd. Mínima</Label>
+                    <Input id="minqty" type="number" value={minQty} onChange={e => setMinQty(e.target.value)} placeholder="0" className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="avgcost" className="text-zinc-700 dark:text-zinc-300">Custo Médio (R$)</Label>
+                  <Input id="avgcost" type="number" value={avgCost} onChange={e => setAvgCost(e.target.value)} placeholder="0,00" className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+              </>
+            )}
+
+            {activeModule === "suppliers" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="supname" className="text-zinc-700 dark:text-zinc-300">Nome do Fornecedor</Label>
+                  <Input id="supname" value={name} onChange={e => setName(e.target.value)} placeholder="Ex: Metalúrgica Silva" required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="supemail" className="text-zinc-700 dark:text-zinc-300">E-mail</Label>
+                  <Input id="supemail" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="contato@fornecedor.com.br" className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="supphone" className="text-zinc-700 dark:text-zinc-300">Telefone</Label>
+                  <Input id="supphone" value={phone} onChange={e => setPhone(e.target.value)} placeholder="(00) 00000-0000" className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+              </>
+            )}
+
+            {activeModule !== "commercial" && activeModule !== "production" && activeModule !== "stock" && activeModule !== "suppliers" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="gname" className="text-zinc-700 dark:text-zinc-300">Nome</Label>
+                  <Input id="gname" value={name} onChange={e => setName(e.target.value)} placeholder="Digite o nome..." required className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gemail" className="text-zinc-700 dark:text-zinc-300">E-mail</Label>
+                  <Input id="gemail" type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="email@empresa.com" className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 h-11" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="gdesc" className="text-zinc-700 dark:text-zinc-300">Observações</Label>
+                  <Textarea id="gdesc" value={notes} onChange={e => setNotes(e.target.value)} placeholder="Detalhes adicionais..." className="bg-zinc-50 dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 min-h-[120px]" />
                 </div>
               </>
             )}
           </div>
-          
+
           <div className="p-6 border-t border-zinc-100 dark:border-zinc-900 flex justify-end gap-3 bg-zinc-50 dark:bg-zinc-900/30">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting} className="border-zinc-300 dark:border-zinc-700 h-11 px-6">
+            <Button type="button" variant="outline" onClick={() => { resetForm(); onOpenChange(false); }} disabled={isPending} className="border-zinc-300 dark:border-zinc-700 h-11 px-6">
               Cancelar
             </Button>
-            <Button type="submit" disabled={submitting} className="bg-emerald-500 hover:bg-emerald-600 text-white h-11 px-6">
-              {submitting ? "Salvando..." : "Salvar Registro"}
+            <Button type="submit" disabled={isPending} className="bg-emerald-500 hover:bg-emerald-600 text-white h-11 px-6">
+              {isPending ? "Salvando..." : "Salvar Registro"}
             </Button>
           </div>
         </form>

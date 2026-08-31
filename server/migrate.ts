@@ -202,6 +202,13 @@ async function runMigrations() {
       \`details\` text,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS \`moduleChats\` (
+      \`id\` int AUTO_INCREMENT PRIMARY KEY,
+      \`moduleId\` varchar(60) NOT NULL,
+      \`userId\` int NOT NULL,
+      \`content\` text NOT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
   ];
 
   for (const sql of tables) {
