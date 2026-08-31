@@ -399,23 +399,32 @@ function RecordFormSheet({ open, onOpenChange, activeModule }: { open: boolean; 
     setErrorMsg("");
     try {
       if (activeModule === "commercial") {
-        const savedClient = await createClient.mutateAsync({ name: clientName || "Cliente" });
+        // 1. Criar o cliente primeiro
+        const clientRes = await createClient.mutateAsync({ name: clientName.trim() || "Cliente" });
+        // 2. Buscar o cliente recém criado pelo nome para pegar o id real
         const allClients = await utils.clients.list.fetch();
-        const found = allClients?.find((c: any) => c.name === (clientName || "Cliente"));
-        const clientId = found?.id ?? 1;
-        await createProposal.mutateAsync({ clientId, title, totalValue: parseFloat(value) || 0 });
+        const found = allClients?.find((c: any) => c.name === (clientName.trim() || "Cliente"));
+        if (!found) throw new Error("Erro ao localizar o cliente criado. Tente novamente.");
+        await createProposal.mutateAsync({ clientId: found.id, title: title.trim(), totalValue: parseFloat(value) || 0 });
       } else if (activeModule === "production") {
+        if (!orderDesc.trim()) throw new Error("Descrição da ordem é obrigatória.");
+        // Para ordens de produção precisamos de um projeto. Usa o primeiro projeto disponível.
         const allProjects = await utils.projects.list.fetch();
-        const projectId = allProjects?.[0]?.id ?? 1;
-        await createOrder.mutateAsync({ projectId, title: orderDesc, dueDate: deadline ? new Date(deadline) : undefined });
+        if (!allProjects || allProjects.length === 0) throw new Error("Crie pelo menos um projeto antes de adicionar uma ordem de produção.");
+        await createOrder.mutateAsync({ projectId: allProjects[0].id, title: orderDesc.trim(), dueDate: deadline ? new Date(deadline) : undefined });
       } else if (activeModule === "stock") {
-        await createStock.mutateAsync({ sku: sku || `SKU-${Date.now()}`, name, quantity: parseFloat(quantity) || 0, minimumQuantity: parseFloat(minQty) || 0, averageCost: parseFloat(avgCost) || 0 });
+        if (!name.trim()) throw new Error("Nome do item é obrigatório.");
+        await createStock.mutateAsync({ sku: sku.trim() || `SKU-${Date.now()}`, name: name.trim(), quantity: parseFloat(quantity) || 0, minimumQuantity: parseFloat(minQty) || 0, averageCost: parseFloat(avgCost) || 0 });
       } else if (activeModule === "suppliers") {
-        await createSupplier.mutateAsync({ name, email, phone });
+        if (!name.trim()) throw new Error("Nome do fornecedor é obrigatório.");
+        await createSupplier.mutateAsync({ name: name.trim(), email: email.trim() || undefined, phone: phone.trim() || undefined });
       } else {
-        await createClient.mutateAsync({ name, email, phone, segment: notes });
+        if (!name.trim()) throw new Error("Nome é obrigatório.");
+        await createClient.mutateAsync({ name: name.trim(), email: email.trim() || undefined, phone: phone.trim() || undefined, segment: notes.trim() || undefined });
       }
-    } catch {}
+    } catch (err: any) {
+      setErrorMsg(err?.message || "Ocorreu um erro ao salvar. Tente novamente.");
+    }
   };
 
   return (
