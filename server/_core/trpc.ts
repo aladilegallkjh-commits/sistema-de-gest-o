@@ -28,11 +28,12 @@ export const roleProcedure = (...roles: AppRole[]) =>
     t.middleware(async opts => {
       const { ctx, next } = opts;
       if (!ctx.user) throw new TRPCError({ code: "UNAUTHORIZED", message: UNAUTHED_ERR_MSG });
-      const role = ctx.user.role as AppRole;
-      if (!roles.includes(role) && role !== "admin") {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui acesso a esta ação." });
+      const role = ctx.user.role as AppRole | "user";
+      // 'admin' e 'user' têm acesso completo (gestor por padrão)
+      if (role === "admin" || role === "user" || roles.includes(role as AppRole)) {
+        return next({ ctx: { ...ctx, user: ctx.user } });
       }
-      return next({ ctx: { ...ctx, user: ctx.user } });
+      throw new TRPCError({ code: "FORBIDDEN", message: "Seu perfil não possui acesso a esta ação." });
     }),
   );
 
