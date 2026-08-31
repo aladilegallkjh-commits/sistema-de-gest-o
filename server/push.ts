@@ -1,10 +1,9 @@
 import webpush from 'web-push';
-import { db } from './db';
-import { eq, inArray } from 'drizzle-orm';
-import { pushSubscriptions } from '../drizzle/schema';
+import { getDb } from './db';
+import { eq } from 'drizzle-orm';
+import { pushSubscriptions, users } from '../drizzle/schema';
 
 // Setup VAPID keys
-// It's important to provide a mailto so push services can contact you if there's an issue
 webpush.setVapidDetails(
   'mailto:suporte@sistemagestao.com',
   process.env.VAPID_PUBLIC_KEY || '',
@@ -14,17 +13,16 @@ webpush.setVapidDetails(
 export async function sendNotificationToUser(userId: number, title: string, body: string, url?: string) {
   if (!process.env.VAPID_PUBLIC_KEY) return; // Skip if push is not configured
 
+  const db = await getDb();
+  if (!db) return;
+
   try {
     const subscriptions = await db.select().from(pushSubscriptions).where(eq(pushSubscriptions.userId, userId));
     if (subscriptions.length === 0) return;
-    
-    const payload = JSON.stringify({
-      title,
-      body,
-      url: url || '/',
-    });
 
-    const promises = subscriptions.map(async (sub) => {
+    const payload = JSON.stringify({ title, body, url: url || '/' });
+
+    const promises = subscriptions.map(async (sub: typeof pushSubscriptions.$inferSelect) => {
       const pushSubscription = {
         endpoint: sub.endpoint,
         keys: {
@@ -53,16 +51,16 @@ export async function sendNotificationToUser(userId: number, title: string, body
 
 export async function sendNotificationToMultipleUsers(userIds: number[], title: string, body: string, url?: string) {
   if (!userIds.length) return;
-  // Remove duplicate IDs
   const uniqueIds = Array.from(new Set(userIds));
-  await Promise.all(uniqueIds.map(id => sendNotificationToUser(id, title, body, url)));
+  await Promise.all(uniqueIds.map((id: number) => sendNotificationToUser(id, title, body, url)));
 }
 
 export async function notifyOthers(currentUserId: number, title: string, body: string, url?: string) {
   try {
-    const { users } = await import('../drizzle/schema');
+    const db = await getDb();
+    if (!db) return;
     const allUsers = await db.select({ id: users.id }).from(users);
-    const otherUserIds = allUsers.map(u => u.id).filter(id => id !== currentUserId);
+    const otherUserIds = allUsers.map((u: { id: number }) => u.id).filter((id: number) => id !== currentUserId);
     if (otherUserIds.length > 0) {
       sendNotificationToMultipleUsers(otherUserIds, title, body, url).catch(console.error);
     }

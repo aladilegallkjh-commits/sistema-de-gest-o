@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { trpc } from '../../_core/trpc';
+import { trpc } from '@/lib/trpc';
 import { toast } from 'sonner';
 
 export function usePushNotifications() {
