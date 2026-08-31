@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useTheme } from "@/contexts/ThemeContext";
 import { ModuleChat } from "@/components/chat/ModuleChat";
+import { usePushNotifications } from "@/components/hooks/usePushNotifications";
 
 const modules = [
   { id: "dashboard", label: "Visão geral", icon: LayoutDashboard },
@@ -66,6 +67,24 @@ export default function Home() {
       (window as any).deferredInstallPrompt = null;
     }
   };
+
+  const utils = trpc.useUtils();
+  const { subscribeUser, permission } = usePushNotifications();
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'PUSH_RECEIVED') {
+        utils.dashboard.summary.invalidate();
+        utils.reports.overview.invalidate();
+        utils.projects.list.invalidate();
+        utils.production.list.invalidate();
+        utils.clients.list.invalidate();
+        utils.chat.list.invalidate();
+      }
+    };
+    navigator.serviceWorker?.addEventListener('message', handleMessage);
+    return () => navigator.serviceWorker?.removeEventListener('message', handleMessage);
+  }, [utils]);
 
   const role = user?.role ?? "gestor";
   // role 'user' agora tem acesso completo (conta recém criada)
@@ -206,6 +225,14 @@ export default function Home() {
               <X className="h-4 w-4 text-zinc-400" />
             </button>
           </div>
+          {permission !== 'granted' && (
+            <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-100 dark:border-amber-900/50 flex flex-col gap-2">
+              <p className="text-xs text-amber-800 dark:text-amber-400">Ative as notificações para receber alertas em tempo real no seu dispositivo.</p>
+              <Button size="sm" onClick={subscribeUser} className="bg-amber-500 hover:bg-amber-600 text-white self-start h-8 text-xs">
+                Ativar Notificações
+              </Button>
+            </div>
+          )}
           <div className="flex-1 overflow-y-auto">
             {notifItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-full gap-3 text-zinc-400">
@@ -287,12 +314,12 @@ function ModulePlaceholder({ active, onBack, onOpenForm, onOpenChat }: { active:
   const isLoading = clientsQuery.isLoading || proposalsQuery.isLoading || productionQuery.isLoading || stockQuery.isLoading || suppliersQuery.isLoading || postSaleQuery.isLoading;
 
   const content: Record<string, { intro: string; stats: [string, string][]; rows: [string, string, string][] }> = {
-    commercial: { intro: "Acompanhe propostas, clientes e conversões em um único pipeline.", stats: [["Propostas abertas", "0"], ["Em aprovação", "0"], ["Conversão média", "—"]], rows: [] },
-    production: { intro: "Ordens de produção, prazos e checklists sob controle da equipe.", stats: [["Ordens ativas", "0"], ["Em risco", "0"], ["Concluídas no mês", "0"]], rows: [] },
-    stock: { intro: "Visibilidade sobre materiais, reservas e requisições críticas.", stats: [["Itens cadastrados", "0"], ["Abaixo do mínimo", "0"], ["Requisições abertas", "0"]], rows: [] },
-    suppliers: { intro: "Acompanhe fornecedores, condições e entregas que impactam seus prazos.", stats: [["Fornecedores ativos", "0"], ["Entregas pendentes", "0"], ["Em atraso", "0"]], rows: [] },
+    commercial: { intro: "Acompanhe propostas, clientes e conversões em um único pipeline.", stats: [["Propostas abertas", proposalsQuery.data?.filter(p => p.status === 'draft').length.toString() ?? "0"], ["Em aprovação", proposalsQuery.data?.filter(p => p.status === 'sent').length.toString() ?? "0"], ["Aprovadas", proposalsQuery.data?.filter(p => p.status === 'approved').length.toString() ?? "0"]], rows: [] },
+    production: { intro: "Ordens de produção, prazos e checklists sob controle da equipe.", stats: [["Ordens ativas", productionQuery.data?.filter(o => o.status === 'in_progress').length.toString() ?? "0"], ["Em risco", productionQuery.data?.filter(o => o.status === 'blocked').length.toString() ?? "0"], ["Concluídas", productionQuery.data?.filter(o => o.status === 'done').length.toString() ?? "0"]], rows: [] },
+    stock: { intro: "Visibilidade sobre materiais, reservas e requisições críticas.", stats: [["Itens cadastrados", stockQuery.data?.length.toString() ?? "0"], ["Abaixo do mínimo", stockQuery.data?.filter(i => Number(i.quantity) <= Number(i.minimumQuantity)).length.toString() ?? "0"], ["Valor Estoque", `R$ ${stockQuery.data?.reduce((acc, i) => acc + (Number(i.quantity) * Number(i.averageCost)), 0).toFixed(2) ?? "0"}`]], rows: [] },
+    suppliers: { intro: "Acompanhe fornecedores, condições e entregas que impactam seus prazos.", stats: [["Fornecedores ativos", suppliersQuery.data?.length.toString() ?? "0"], ["Entregas pendentes", suppliersQuery.data?.filter(s => s.deliveryStatus === 'pending').length.toString() ?? "0"], ["Em atraso", suppliersQuery.data?.filter(s => s.deliveryStatus === 'delayed').length.toString() ?? "0"]], rows: [] },
     costs: { intro: "Compare o previsto e o realizado para proteger a margem de cada projeto.", stats: [["Custo previsto", "R$ 0"], ["Custo realizado", "R$ 0"], ["Margem projetada", "—"]], rows: [] },
-    "post-sale": { intro: "Nunca perca o momento certo de cuidar do relacionamento e gerar recorrência.", stats: [["Contatos hoje", "0"], ["Satisfeitos", "0"], ["Oportunidades", "0"]], rows: [] },
+    "post-sale": { intro: "Nunca perca o momento certo de cuidar do relacionamento e gerar recorrência.", stats: [["Total Registros", postSaleQuery.data?.length.toString() ?? "0"], ["Satisfeitos", postSaleQuery.data?.filter(p => p.stage === 'satisfied').length.toString() ?? "0"], ["Oportunidades", postSaleQuery.data?.filter(p => p.stage === 'opportunity').length.toString() ?? "0"]], rows: [] },
     reports: { intro: "Relatórios gerenciais para transformar operação em decisão.", stats: [["Produtividade", "—"], ["Giro de estoque", "—"], ["Projetos no prazo", "—"]], rows: [] },
   };
   const data = content[active] ?? content.commercial;

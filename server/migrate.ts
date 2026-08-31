@@ -209,6 +209,14 @@ async function runMigrations() {
       \`content\` text NOT NULL,
       \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
     )`,
+    `CREATE TABLE IF NOT EXISTS \`pushSubscriptions\` (
+      \`id\` int AUTO_INCREMENT PRIMARY KEY,
+      \`userId\` int NOT NULL,
+      \`endpoint\` text NOT NULL,
+      \`p256dh\` varchar(255) NOT NULL,
+      \`auth\` varchar(255) NOT NULL,
+      \`createdAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`,
   ];
 
   for (const sql of tables) {
